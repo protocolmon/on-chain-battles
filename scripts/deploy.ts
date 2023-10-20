@@ -46,7 +46,7 @@ async function main() {
   );
   const { address: damageOverTimeMoveAddress } = await deployContract(
     "DamageOverTimeMove",
-    [damageOverTimeEffectAddress],
+    [damageOverTimeEffectAddress, 50],
   );
   const { address: foggedEffectAddress } = await deployContract("FoggedEffect");
   const { address: controlMoveAddress } = await deployContract("ControlMove", [

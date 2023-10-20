@@ -120,8 +120,18 @@ contract MoveExecutorV1 is IMoveExecutorV1 {
         );
 
         return (
-            finalOutcome.attacker,
-            finalOutcome.defender,
+            applyMonsterStatusEffects(
+                finalOutcome.attacker,
+                finalOutcome.attackerStatusEffects,
+                randomness,
+                IMonsterStatusEffectV1.Stage.POST_MOVE
+            ),
+            applyMonsterStatusEffects(
+                finalOutcome.defender,
+                finalOutcome.defenderStatusEffects,
+                randomness,
+                IMonsterStatusEffectV1.Stage.POST_MOVE
+            ),
             finalOutcome.attackerStatusEffects,
             finalOutcome.defenderStatusEffects,
             firstStrikerId

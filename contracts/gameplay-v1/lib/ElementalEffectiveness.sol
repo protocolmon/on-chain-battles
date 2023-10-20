@@ -40,6 +40,8 @@ library ElementalEffectiveness {
         IMonsterV1.Element attackerElement,
         IMonsterV1.Element defenderElement
     ) internal pure returns (uint16 multiplier) {
+        multiplier = DEFAULT_MULTIPLIER;
+
         if (attackerElement == IMonsterV1.Element.Fire) {
             if (
                 defenderElement == IMonsterV1.Element.Water ||
@@ -77,7 +79,5 @@ library ElementalEffectiveness {
                 multiplier = STRONG_MULTIPLIER;
             }
         }
-
-        multiplier = DEFAULT_MULTIPLIER;
     }
 }

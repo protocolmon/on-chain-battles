@@ -4,7 +4,7 @@ pragma solidity ^0.8.21;
 import "../../../abstract/BaseMoveStatusEffectWithoutStorageV1.sol";
 
 contract CloudCoverEffect is BaseMoveStatusEffectWithoutStorageV1 {
-    uint8 public immutable chance;
+    uint8 public chance;
 
     constructor(uint8 _chance) {
         chance = _chance;
@@ -42,5 +42,9 @@ contract CloudCoverEffect is BaseMoveStatusEffectWithoutStorageV1 {
 
     function name() public pure override returns (string memory) {
         return "cloud-cover";
+    }
+
+    function setChance(uint8 _chance) external {
+        chance = _chance;
     }
 }

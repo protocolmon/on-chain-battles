@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 import { MatchMakerV2, MonsterApiV1 } from "../typechain-types";
 import { Signer } from "ethers";
+import { monster } from "../typechain-types/contracts/gameplay-v1/effects";
 
 const ONE_MINUTE = 60;
 
@@ -57,6 +58,15 @@ describe("OCB", function () {
       await ethers.getContractFactory("DamageOverTimeMove");
     const damageOverTimeMove = await DamageOverTimeMove.deploy(
       await damageOverTimeEffect.getAddress(),
+      100,
+    );
+
+    const FoggedEffect = await ethers.getContractFactory("FoggedEffect");
+    const foggedEffect = await FoggedEffect.deploy();
+
+    const ControlMove = await ethers.getContractFactory("ControlMove");
+    const controlMove = await ControlMove.deploy(
+      await foggedEffect.getAddress(),
     );
 
     const CloudCoverEffect =
@@ -82,12 +92,36 @@ describe("OCB", function () {
     const PurgeBuffsMove = await ethers.getContractFactory("PurgeBuffsMove");
     const purgeBuffsMove = await PurgeBuffsMove.deploy(100);
 
+    const WallBreakerMove = await ethers.getContractFactory("WallBreakerMove");
+    const wallBreakerMove = await WallBreakerMove.deploy();
+
+    const ElementalWallEffect = await ethers.getContractFactory(
+      "ElementalWallEffect",
+    );
+    const elementalWallEffect = await ElementalWallEffect.deploy(
+      await wallBreakerMove.getAddress(),
+    );
+
+    const ElementalWallMove =
+      await ethers.getContractFactory("ElementalWallMove");
+    const elementalWallMove = await ElementalWallMove.deploy(
+      await elementalWallEffect.getAddress(),
+    );
+
     return {
+      cloudCoverEffect: cloudCoverEffect,
       damageOverTimeAttack: damageOverTimeMove,
       cloudCoverMove: cloudCoverMove,
       speedAuraMove: speedAuraMove,
       healMove: HealMove,
       purgeBuffsMove: purgeBuffsMove,
+      speedAuraEffect: speedAuraEffect,
+      damageOverTimeEffect: damageOverTimeEffect,
+      controlEffect: foggedEffect,
+      controlMove: controlMove,
+      wallBreakerMove: wallBreakerMove,
+      elementalWallEffect: elementalWallEffect,
+      elementalWallMove: elementalWallMove,
     };
   }
 
@@ -324,6 +358,182 @@ describe("OCB", function () {
 
       // battle done!
       expect(true).to.equal(true);
+    });
+
+    it("should have issues fixed that occured in a battle on 2023-10-20", async () => {
+      const { account2, account3, monsterApiV1, matchMakerV2 } = await deploy();
+
+      await monsterApiV1.createMonsterByName(10); // Fernopig
+      await monsterApiV1.createMonsterByName(10); // Fernopig
+      await monsterApiV1.createMonsterByName(6); // Wavepaw
+      await monsterApiV1.createMonsterByName(6); // Wavepaw
+
+      const {
+        cloudCoverEffect,
+        purgeBuffsMove,
+        cloudCoverMove,
+        speedAuraMove,
+        damageOverTimeAttack,
+        speedAuraEffect,
+        damageOverTimeEffect,
+        controlMove,
+        elementalWallEffect,
+        elementalWallMove,
+      } = await deployAttacks();
+
+      await cloudCoverEffect.setChance(100);
+
+      await matchMakerV2.connect(account2).join("1", "2"); // join with fire and water
+      await matchMakerV2.connect(account3).join("3", "4"); // join with water and nature
+
+      let [, , monster1Hp, , , speed1] = await matchMakerV2.monsters(1);
+      let [, , monster2Hp, , , speed2] = await matchMakerV2.monsters(3);
+      expect(monster1Hp).to.equal(120);
+      expect(monster2Hp).to.equal(125);
+      expect(speed1).to.equal(140);
+      expect(speed2).to.equal(125);
+
+      const matchId = 1;
+
+      await runAttacks(
+        matchMakerV2,
+        account2,
+        account3,
+        matchId,
+        await purgeBuffsMove.getAddress(),
+        await cloudCoverMove.getAddress(),
+      );
+
+      let statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
+      expect(statusEffectsMonster1.length).to.equal(0);
+
+      let statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
+      expect(statusEffectsMonster2.length).to.equal(1);
+      expect(statusEffectsMonster2[0][0]).to.equal(
+        await cloudCoverEffect.getAddress(),
+      );
+      expect(statusEffectsMonster2[0][1]).to.equal(
+        2, // turns left
+      );
+
+      // no damage yet
+      [, , monster1Hp] = await matchMakerV2.monsters(1);
+      [, , monster2Hp] = await matchMakerV2.monsters(3);
+      expect(monster1Hp).to.equal(120);
+      expect(monster2Hp).to.equal(125);
+
+      await runAttacks(
+        matchMakerV2,
+        account2,
+        account3,
+        matchId,
+        await cloudCoverMove.getAddress(),
+        await speedAuraMove.getAddress(),
+      );
+
+      // no damage yet
+      [, , monster1Hp] = await matchMakerV2.monsters(1);
+      [, , monster2Hp] = await matchMakerV2.monsters(3);
+      expect(monster1Hp).to.equal(120);
+      expect(monster2Hp).to.equal(125);
+
+      statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
+      expect(statusEffectsMonster1.length).to.equal(1);
+      expect(statusEffectsMonster1[0][0]).to.equal(
+        await cloudCoverEffect.getAddress(),
+      );
+      expect(statusEffectsMonster1[0][1]).to.equal(
+        2, // turns left
+      );
+
+      statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
+      expect(statusEffectsMonster2.length).to.equal(2);
+      expect(statusEffectsMonster2[0][0]).to.equal(
+        await cloudCoverEffect.getAddress(),
+      );
+      expect(statusEffectsMonster2[0][1]).to.equal(
+        1, // turns left
+      );
+      expect(statusEffectsMonster2[1][0]).to.equal(
+        await speedAuraEffect.getAddress(),
+      );
+      expect(statusEffectsMonster2[1][1]).to.equal(
+        254, // turns left
+      );
+
+      await cloudCoverEffect.setChance(0);
+
+      await runAttacks(
+        matchMakerV2,
+        account2,
+        account3,
+        matchId,
+        await speedAuraMove.getAddress(),
+        await damageOverTimeAttack.getAddress(),
+      );
+
+      // big damage
+      [, , monster1Hp] = await matchMakerV2.monsters(1);
+      [, , monster2Hp] = await matchMakerV2.monsters(3);
+      expect(monster1Hp).to.equal(12);
+      expect(monster2Hp).to.equal(125);
+
+      statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
+      expect(statusEffectsMonster1.length).to.equal(3);
+      expect(statusEffectsMonster1[0][0]).to.equal(
+        await cloudCoverEffect.getAddress(),
+      );
+      expect(statusEffectsMonster1[0][1]).to.equal(
+        1, // turns left
+      );
+      expect(statusEffectsMonster1[1][0]).to.equal(
+        await speedAuraEffect.getAddress(),
+      );
+      expect(statusEffectsMonster1[1][1]).to.equal(
+        254, // turns left
+      );
+      expect(statusEffectsMonster1[2][0]).to.equal(
+        await damageOverTimeEffect.getAddress(),
+      );
+
+      statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
+      expect(statusEffectsMonster2.length).to.equal(1);
+      expect(statusEffectsMonster2[0][0]).to.equal(
+        await speedAuraEffect.getAddress(),
+      );
+      expect(statusEffectsMonster2[0][1]).to.equal(
+        253, // turns left
+      );
+
+      await runAttacks(
+        matchMakerV2,
+        account2,
+        account3,
+        matchId,
+        await controlMove.getAddress(),
+        await elementalWallMove.getAddress(),
+      );
+
+      // first monster killed
+      [, , monster1Hp] = await matchMakerV2.monsters(1);
+      [, , monster2Hp] = await matchMakerV2.monsters(3);
+      expect(monster1Hp).to.equal(0);
+      expect(monster2Hp).to.equal(125);
+
+      statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
+      expect(statusEffectsMonster2.length).to.equal(2);
+      expect(statusEffectsMonster2[0][0]).to.equal(
+        await speedAuraEffect.getAddress(),
+      );
+      expect(statusEffectsMonster2[0][1]).to.equal(
+        252, // turns left
+      );
+      expect(statusEffectsMonster2[1][0]).to.equal(
+        await elementalWallEffect.getAddress(),
+      );
+      expect(statusEffectsMonster2[1][1]).to.equal(
+        2, // turns left
+      );
     });
   });
 });

@@ -8,9 +8,11 @@ import "../../lib/BaseDamage.sol";
 
 contract DamageOverTimeMove is MoveV1 {
     IBaseStatusEffectV1 public damageOverTimeEffect;
+    uint8 public chance;
 
-    constructor(IBaseStatusEffectV1 _damageOverTimeEffect) {
+    constructor(IBaseStatusEffectV1 _damageOverTimeEffect, uint8 _chance) {
         damageOverTimeEffect = _damageOverTimeEffect;
+        chance = _chance;
     }
 
     function execute(
@@ -29,8 +31,7 @@ contract DamageOverTimeMove is MoveV1 {
             input.defender.element
         );
 
-        // 50% probability that a damage over time effect is applied
-        if (isRandomHit(input.randomness, "damageOverTime", 50)) {
+        if (isRandomHit(input.randomness, "damageOverTime", chance)) {
             damageOverTimeEffect.storeInfo(
                 input.defender.tokenId,
                 abi.encode(uint16(damage / 5))

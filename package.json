@@ -6,8 +6,8 @@
   "scripts": {
     "test": "npx hardhat test",
     "prepare": "husky install",
-    "deploy": "npx hardhat run ./scripts/deploy-ocb.ts",
-    "deploy:pmon": "npx hardhat run ./scripts/deploy-ocb.ts --network pmon",
+    "deploy": "npx hardhat run scripts/deploy.ts",
+    "deploy:pmon": "npx hardhat run scripts/deploy.ts --network pmon",
     "cli:pmon": "npx hardhat run ./cli/commander.ts --network pmon"
   },
   "repository": {
