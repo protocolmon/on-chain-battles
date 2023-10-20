@@ -1,0 +1,18 @@
+node_modules
+.env
+coverage
+coverage.json
+typechain
+typechain-types
+
+# Hardhat files
+cache
+artifacts
+
+# Generated
+cli/contracts.generated.json
+
+.idea
+
+# Might remove from gitignore later
+.openzeppelin

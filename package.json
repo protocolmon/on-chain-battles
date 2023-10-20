@@ -1,0 +1,42 @@
+{
+  "name": "@polychainmonsters/on-chain-battles",
+  "version": "0.0.1",
+  "description": "Smart contracts + CLI for fully on-chain battles",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx hardhat test",
+    "prepare": "husky install",
+    "deploy": "npx hardhat run ./scripts/deploy-ocb.ts",
+    "deploy:pmon": "npx hardhat run ./scripts/deploy-ocb.ts --network pmon",
+    "cli:pmon": "npx hardhat run ./cli/commander.ts --network pmon"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/polychainmonsters/on-chain-battles.git"
+  },
+  "author": "onchainguy",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/polychainmonsters/on-chain-battles/issues"
+  },
+  "homepage": "https://github.com/polychainmonsters/on-chain-battles#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox-viem": "^1.0.0",
+    "@nomicfoundation/hardhat-verify": "^1.1.1",
+    "@openzeppelin/hardhat-upgrades": "^2.3.3",
+    "@types/blessed": "^0.1.24",
+    "hardhat": "^2.18.2",
+    "hardhat-contract-sizer": "^2.10.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.0.2",
+    "prettier": "3.0.3"
+  },
+  "dependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "@openzeppelin/contracts-upgradeable": "^5.0.0",
+    "blessed": "^0.1.81"
+  },
+  "lint-staged": {
+    "**/*": "prettier --write --ignore-unknown"
+  }
+}
