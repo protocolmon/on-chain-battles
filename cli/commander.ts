@@ -208,12 +208,6 @@ async function setupEventListener(matchMakerV2: MatchMakerV2): Promise<bigint> {
             logger.log(`Round: ${currentRound}`);
             firstAttackDone = true;
 
-            // clear status effects
-            statusEffectsByMonsterId.set(firstMonsterId, []);
-            statusEffectsByMonsterId.set(secondMonsterId, []);
-            statusEffectsByMonsterId.set(firstOpponentMonsterId, []);
-            statusEffectsByMonsterId.set(secondOpponentMonsterId, []);
-
             await chooseAttack(challenger, opponent, matchMakerV2);
           }
         } catch (e: any) {
@@ -409,6 +403,13 @@ async function runMatch() {
       if (playersMovesCommitted.size >= 2) {
         logger.log(`Revealing moves...`);
         playersMovesCommitted.clear();
+
+        // clear status effects
+        logger.log("Resetting status effects...");
+        statusEffectsByMonsterId.set(firstMonsterId, []);
+        statusEffectsByMonsterId.set(secondMonsterId, []);
+        statusEffectsByMonsterId.set(firstOpponentMonsterId, []);
+        statusEffectsByMonsterId.set(secondOpponentMonsterId, []);
 
         try {
           const matchMakerV2Fresh =

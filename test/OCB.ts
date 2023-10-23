@@ -2,7 +2,6 @@ import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 import { MatchMakerV2, MonsterApiV1 } from "../typechain-types";
 import { Signer } from "ethers";
-import { monster } from "../typechain-types/contracts/gameplay-v1/effects";
 
 const ONE_MINUTE = 60;
 
@@ -373,7 +372,7 @@ describe("OCB", function () {
       expect(true).to.equal(true);
     });
 
-    it.only("should execute heal before damage", async () => {
+    it("should execute heal before damage", async () => {
       const { account2, account3, matchMakerV2, monsterApiV1 } = await deploy();
 
       await createMockMonsters(monsterApiV1);
