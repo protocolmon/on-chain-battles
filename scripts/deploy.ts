@@ -41,6 +41,9 @@ async function main() {
 
   output.contracts.MatchMakerV2 = matchMakerV2Address;
 
+  const ConfusedEffect = await ethers.getContractFactory("ConfusedEffect");
+  const confusedEffect = await ConfusedEffect.deploy();
+
   const { address: damageOverTimeEffectAddress } = await deployContract(
     "DamageOverTimeEffect",
   );
@@ -56,8 +59,10 @@ async function main() {
     "PurgeBuffsMove",
     [50],
   );
-  const { address: wallBreakerMoveAddress } =
-    await deployContract("WallBreakerMove");
+  const { address: wallBreakerMoveAddress } = await deployContract(
+    "WallBreakerMove",
+    [await confusedEffect.getAddress()],
+  );
 
   const { address: cleansingShieldMoveAddress } = await deployContract(
     "CleansingShieldMove",
@@ -108,6 +113,39 @@ async function main() {
     [speedAuraEffectAddress],
   );
 
+  const { address: confusedControlMove } = await deployContract(
+    "ConfusedControlMove",
+    [controlMoveAddress],
+  );
+  await confusedEffect.addConfusedMove(controlMoveAddress, confusedControlMove);
+
+  const { address: confusedDamageOverTimeMove } = await deployContract(
+    "ConfusedDamageOverTimeMove",
+    [damageOverTimeMoveAddress],
+  );
+  await confusedEffect.addConfusedMove(
+    damageOverTimeMoveAddress,
+    confusedDamageOverTimeMove,
+  );
+
+  const { address: confusedPurgeBuffsMove } = await deployContract(
+    "ConfusedPurgeBuffsMove",
+    [purgeBuffsMoveAddress],
+  );
+  await confusedEffect.addConfusedMove(
+    purgeBuffsMoveAddress,
+    confusedPurgeBuffsMove,
+  );
+
+  const { address: confusedWallBreakerMove } = await deployContract(
+    "ConfusedWallBreakerMove",
+    [wallBreakerMoveAddress],
+  );
+  await confusedEffect.addConfusedMove(
+    wallBreakerMoveAddress,
+    confusedWallBreakerMove,
+  );
+
   output.effects.DamageOverTimeEffect = damageOverTimeEffectAddress;
   output.attacks.DamageOverTimeMove = damageOverTimeMoveAddress;
   output.effects.FoggedEffect = foggedEffectAddress;
@@ -128,6 +166,7 @@ async function main() {
   output.attacks.HealMove = healMoveAddress;
   output.effects.SpeedAuraEffect = speedAuraEffectAddress;
   output.attacks.SpeedAuraMove = speedAuraMoveAddress;
+  output.effects.ConfusedEffect = await confusedEffect.getAddress();
 
   // Writing to a JSON file
   fs.writeFileSync(

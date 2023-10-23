@@ -91,8 +91,13 @@ describe("OCB", function () {
     const PurgeBuffsMove = await ethers.getContractFactory("PurgeBuffsMove");
     const purgeBuffsMove = await PurgeBuffsMove.deploy(100);
 
+    const ConfusedEffect = await ethers.getContractFactory("ConfusedEffect");
+    const confusedEffect = await ConfusedEffect.deploy();
+
     const WallBreakerMove = await ethers.getContractFactory("WallBreakerMove");
-    const wallBreakerMove = await WallBreakerMove.deploy();
+    const wallBreakerMove = await WallBreakerMove.deploy(
+      await confusedEffect.getAddress(),
+    );
 
     const ElementalWallEffect = await ethers.getContractFactory(
       "ElementalWallEffect",

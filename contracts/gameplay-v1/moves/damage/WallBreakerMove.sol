@@ -7,6 +7,12 @@ import "../../lib/CriticalHit.sol";
 import "../../lib/ElementalEffectiveness.sol";
 
 contract WallBreakerMove is MoveV1 {
+    IBaseStatusEffectV1 public confusedEffect;
+
+    constructor(IBaseStatusEffectV1 _confusedEffect) {
+        confusedEffect = _confusedEffect;
+    }
+
     function execute(
         IMoveV1.MoveInput memory input
     ) external view returns (IMoveV1.MoveOutput memory) {
@@ -23,14 +29,21 @@ contract WallBreakerMove is MoveV1 {
         );
 
         // 80% chance that wall is broken
-        if (isRandomHit(input.randomness, "wallBreaker", 80)) {
-            input.attackerStatusEffects = MoveLibV1.removeStatusEffectsByGroup(
-                input.attackerStatusEffects,
+        if (isRandomHit(input.randomness, "wallBreaker", 100)) {
+            input.defenderStatusEffects = MoveLibV1.removeStatusEffectsByGroup(
+                input.defenderStatusEffects,
                 IBaseStatusEffectV1.StatusEffectGroup.WALL
+            );
+
+            input.defenderStatusEffects = MoveLibV1.addStatusEffect(
+                input.defenderStatusEffects,
+                IBaseStatusEffectV1.StatusEffectWrapper(
+                    confusedEffect,
+                    2
+                )
             );
         }
 
-        // finally apply the potential critical hit after the damage over time effect
         damage = CriticalHit.applyCriticalHit(
             damage,
             input.randomness,

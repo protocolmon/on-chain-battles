@@ -3,6 +3,6 @@ pragma solidity ^0.8.21;
 
 import "./abstract/BaseConfusedMove.sol";
 
-contract ConfusedPurgePuffsMove is BaseConfusedMove {
+contract ConfusedPurgeBuffsMove is BaseConfusedMove {
     constructor(IMoveV1 _originalMove) BaseConfusedMove(_originalMove) {}
 }
