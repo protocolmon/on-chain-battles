@@ -143,37 +143,50 @@ describe("OCB", function () {
   async function commit(
     matchMakerV2: MatchMakerV2,
     user: Signer,
-    matchId: number,
+    matchId: number | bigint,
     move: string,
-  ) {
-    await matchMakerV2.connect(user).commit(matchId, getCommitHash(move));
+  ): Promise<any[]> {
+    const tx = await matchMakerV2
+      .connect(user)
+      .commit(matchId, getCommitHash(move));
+    const receipt = await tx.wait();
+    return receipt!.logs.map((log) =>
+      matchMakerV2.interface.parseLog(log as unknown as any),
+    );
   }
 
   async function reveal(
     matchMakerV2: MatchMakerV2,
     user: Signer,
-    matchId: number,
+    matchId: number | bigint,
     move: string,
-  ) {
-    // cast "secret" to bytes32
-    await matchMakerV2
+  ): Promise<any[]> {
+    const tx = await matchMakerV2
       .connect(user)
       .reveal(matchId, move, ethers.encodeBytes32String("secret"));
+    const receipt = await tx.wait();
+    return receipt!.logs.map((log) =>
+      matchMakerV2.interface.parseLog(log as unknown as any),
+    );
   }
 
   async function runAttacks(
     matchMakerV2: MatchMakerV2,
     player1: Signer,
     player2: Signer,
-    matchId: number,
+    matchId: number | bigint,
     move1: string,
     move2: string,
-  ) {
-    await commit(matchMakerV2, player1, matchId, move1);
-    await commit(matchMakerV2, player2, matchId, move2);
+  ): Promise<any[]> {
+    const events = [];
 
-    await reveal(matchMakerV2, player1, matchId, move1);
-    await reveal(matchMakerV2, player2, matchId, move2);
+    events.push(...(await commit(matchMakerV2, player1, matchId, move1)));
+    events.push(...(await commit(matchMakerV2, player2, matchId, move2)));
+
+    events.push(...(await reveal(matchMakerV2, player1, matchId, move1)));
+    events.push(...(await reveal(matchMakerV2, player2, matchId, move2)));
+
+    return events;
   }
 
   describe("V1", function () {
@@ -358,6 +371,46 @@ describe("OCB", function () {
 
       // battle done!
       expect(true).to.equal(true);
+    });
+
+    it.only("should execute heal before damage", async () => {
+      const { account2, account3, matchMakerV2, monsterApiV1 } = await deploy();
+
+      await createMockMonsters(monsterApiV1);
+
+      await matchMakerV2.connect(account2).join("1", "3"); // join with fire and water
+      await matchMakerV2.connect(account3).join("4", "5"); // join with water and nature
+
+      const matchId = await matchMakerV2.matchCount();
+
+      const { healMove, damageOverTimeAttack, speedAuraMove, cloudCoverMove } =
+        await deployAttacks();
+
+      // lets run a speed aura first to make player 2 faster than player 1
+      await runAttacks(
+        matchMakerV2,
+        account2,
+        account3,
+        matchId,
+        await cloudCoverMove.getAddress(),
+        await speedAuraMove.getAddress(),
+      );
+
+      const attackResults = await runAttacks(
+        matchMakerV2,
+        account2,
+        account3,
+        matchId,
+        await healMove.getAddress(),
+        await damageOverTimeAttack.getAddress(),
+      );
+
+      const firstStrikeEvent = attackResults.find(
+        (event) => event.name === "FirstStrike",
+      );
+
+      expect(firstStrikeEvent.args[0]).to.equal(1);
+      expect(firstStrikeEvent.args[1]).to.equal(1);
     });
 
     it("should have issues fixed that occured in a battle on 2023-10-20", async () => {
