@@ -23,8 +23,8 @@ contract DamageOverTimeMove is MoveV1 {
             input.defender
         );
 
-        // apply elemental effectiveness
-        damage = ElementalEffectiveness.applyElementalEffectiveness(
+        uint16 elementalMultiplier;
+        (damage, elementalMultiplier) = ElementalEffectiveness.applyElementalEffectiveness(
             damage,
             input.attacker.element,
             input.attacker.element,
@@ -43,10 +43,20 @@ contract DamageOverTimeMove is MoveV1 {
         }
 
         // finally apply the potential critical hit after the damage over time effect
-        damage = CriticalHit.applyCriticalHit(
+        bool isCriticalHit;
+        (damage, isCriticalHit) = CriticalHit.applyCriticalHit(
             damage,
             input.randomness,
             input.attackerStatusEffects
+        );
+
+        emitBattleLogDamage(
+            input.attacker.tokenId,
+            input.defender.tokenId,
+            address(this),
+            damage,
+            elementalMultiplier,
+            isCriticalHit
         );
 
         return

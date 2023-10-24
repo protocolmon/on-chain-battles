@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 import chalk from "chalk";
-import { MonsterApiV1, MatchMakerV2 } from "../typechain-types";
+import { MonsterApiV1, MatchMakerV2, EventEmitterV1 } from "../typechain-types";
 import {
   attacks,
   monsterIds,
@@ -217,6 +217,40 @@ async function setupEventListener(matchMakerV2: MatchMakerV2): Promise<bigint> {
         }
       });
     }, 2000);
+
+    const eventEmitterV1 =
+      await getContractInstance<EventEmitterV1>("EventEmitterV1");
+
+    eventEmitterV1.on(
+      "BattleLogStatusEffect" as unknown as any,
+      async (monsterId: bigint, effect: string, extraData: bigint) => {
+        logger.log(
+          `Battle Log Status Effect Monster ID: ${monsterId} Effect: ${translateEffectByAddress(
+            effect,
+          )} Extra Data: ${extraData}`,
+        );
+      },
+    );
+
+    eventEmitterV1.on(
+      "BattleLogDamage" as unknown as any,
+      async (
+        attackerMonsterId: bigint,
+        defenderMonsterId: bigint,
+        move: string,
+        damage: bigint,
+        elementalEffectiveness: bigint,
+        isCritical: boolean,
+      ) => {
+        const elementalEffectivenessConverted =
+          parseInt(elementalEffectiveness.toString()) / 100;
+        logger.log(
+          `Battle Log Damage Attacker Monster ID: ${attackerMonsterId} Defender Monster ID: ${defenderMonsterId} Move: ${translateMoveByAddress(
+            move,
+          )} Damage: ${damage} Elemental Effectiveness: ${elementalEffectivenessConverted} Is Critical: ${isCritical}`,
+        );
+      },
+    );
 
     matchMakerV2.on(
       "GameOver" as unknown as any,

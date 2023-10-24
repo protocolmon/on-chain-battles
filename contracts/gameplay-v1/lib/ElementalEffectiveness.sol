@@ -13,14 +13,14 @@ library ElementalEffectiveness {
         IMonsterV1.Element attackerElement1,
         IMonsterV1.Element attackerElement2,
         IMonsterV1.Element defenderElement
-    ) internal pure returns (uint16) {
-        uint16 multiplier = _getAttackMultiplier(
+    ) internal pure returns (uint16 returnDamage, uint16 multiplier) {
+        multiplier = _getAttackMultiplier(
             attackerElement1,
             attackerElement2,
             defenderElement
         );
 
-        return (damage * multiplier) / 100;
+        returnDamage = (damage * multiplier) / 100;
     }
 
     function _getAttackMultiplier(

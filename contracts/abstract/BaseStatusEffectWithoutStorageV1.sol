@@ -10,7 +10,7 @@ abstract contract BaseStatusEffectWithoutStorageV1 is
 {
     function applyEffect(
         uint256
-    ) external view virtual override returns (bool) {
+    ) external virtual override returns (bool) {
         // no nothing, just a base implementation
         return false;
     }

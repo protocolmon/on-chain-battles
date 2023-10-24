@@ -12,7 +12,7 @@ interface IMoveStatusEffectV1 {
     function applyEffect(
         IMoveV1 move,
         uint256 randomness
-    ) external view returns (IMoveV1);
+    ) external returns (IMoveV1);
 
     /// @dev When to execute this status effect
     function stage() external view returns (Stage);

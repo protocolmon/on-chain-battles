@@ -15,13 +15,14 @@ contract WallBreakerMove is MoveV1 {
 
     function execute(
         IMoveV1.MoveInput memory input
-    ) external view returns (IMoveV1.MoveOutput memory) {
+    ) external returns (IMoveV1.MoveOutput memory) {
         uint16 damage = BaseDamage.calculateBaseDamage(
             input.attacker,
             input.defender
         );
 
-        damage = ElementalEffectiveness.applyElementalEffectiveness(
+        uint16 elementalMultiplier;
+        (damage, elementalMultiplier) = ElementalEffectiveness.applyElementalEffectiveness(
             damage,
             input.attacker.element,
             getSecondElement(input.attacker.element),
@@ -44,10 +45,20 @@ contract WallBreakerMove is MoveV1 {
             );
         }
 
-        damage = CriticalHit.applyCriticalHit(
+        bool isCriticalHit;
+        (damage, isCriticalHit) = CriticalHit.applyCriticalHit(
             damage,
             input.randomness,
             input.attackerStatusEffects
+        );
+
+        emitBattleLogDamage(
+            input.attacker.tokenId,
+            input.defender.tokenId,
+            address(this),
+            damage,
+            elementalMultiplier,
+            isCriticalHit
         );
 
         return

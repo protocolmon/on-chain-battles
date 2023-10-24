@@ -15,13 +15,14 @@ contract ControlMove is MoveV1 {
 
     function execute(
         MoveInput memory input
-    ) external view returns (MoveOutput memory) {
+    ) external returns (MoveOutput memory) {
         uint16 damage = BaseDamage.calculateBaseDamage(
             input.attacker,
             input.defender
         );
 
-        damage = ElementalEffectiveness.applyElementalEffectiveness(
+        uint16 elementalMultiplier;
+        (damage, elementalMultiplier) = ElementalEffectiveness.applyElementalEffectiveness(
             damage,
             input.attacker.element,
             getSecondElement(input.attacker.element),
@@ -37,10 +38,20 @@ contract ControlMove is MoveV1 {
         }
 
         // finally apply the potential critical hit after the damage over time effect
-        damage = CriticalHit.applyCriticalHit(
+        bool isCriticalHit;
+        (damage, isCriticalHit) = CriticalHit.applyCriticalHit(
             damage,
             input.randomness,
             input.attackerStatusEffects
+        );
+
+        emitBattleLogDamage(
+            input.attacker.tokenId,
+            input.defender.tokenId,
+            address(this),
+            damage,
+            elementalMultiplier,
+            isCriticalHit
         );
 
         return

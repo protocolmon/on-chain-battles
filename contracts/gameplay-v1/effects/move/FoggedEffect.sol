@@ -4,18 +4,25 @@ pragma solidity ^0.8.21;
 import "../../../abstract/BaseMoveStatusEffectWithoutStorageV1.sol";
 
 contract FoggedEffect is BaseMoveStatusEffectWithoutStorageV1 {
+    uint8 public constant CHANCE = 30;
+
     function applyEffect(
         IMoveV1 move,
         uint256 randomness
-    ) external view returns (IMoveV1) {
-        // 30% change to miss attack
-        if (
-            move.moveType() == IMoveV1.MoveType.Damage &&
-            isRandomHit(randomness, name(), 30)
-        ) {
-            return IMoveV1(address(0));
+    ) external returns (IMoveV1 returnMove) {
+        returnMove = move;
+
+        bool isHit = move.moveType() == IMoveV1.MoveType.Damage && isRandomHit(randomness, name(), CHANCE);
+
+        if (isHit) {
+            returnMove = IMoveV1(address(0));
         }
-        return move;
+
+        emitBattleLogStatusEffect(
+            0,
+            address(this),
+            isHit ? 1 : 0
+        );
     }
 
     function group()

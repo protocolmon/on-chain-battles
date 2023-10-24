@@ -33,6 +33,11 @@ async function main() {
   output.contracts.MonsterApiV1 = monsterApiV1Address;
   output.contracts.MoveExecutorV1 = moveExecutorV1Address;
 
+  const EventEmitterV1 = await ethers.getContractFactory("EventEmitterV1");
+  const eventEmitterV1 = await EventEmitterV1.deploy();
+
+  output.contracts.EventEmitterV1 = await eventEmitterV1.getAddress();
+
   const { address: matchMakerV2Address } = await deployProxy("MatchMakerV2", [
     monsterApiV1Address,
     moveExecutorV1Address,
@@ -167,6 +172,19 @@ async function main() {
   output.effects.SpeedAuraEffect = speedAuraEffectAddress;
   output.attacks.SpeedAuraMove = speedAuraMoveAddress;
   output.effects.ConfusedEffect = await confusedEffect.getAddress();
+
+  // iterate through all attacks and effects and set the event emitter
+  for (const key of Object.keys(output.attacks)) {
+    console.log(`Setting event emitter for ${key}...`);
+    const attackContract = await ethers.getContractAt(key, output.attacks[key]);
+    await attackContract.setEventEmitter(await eventEmitterV1.getAddress());
+  }
+
+  for (const key of Object.keys(output.effects)) {
+    console.log(`Setting event emitter for ${key}...`);
+    const effectContract = await ethers.getContractAt(key, output.effects[key]);
+    await effectContract.setEventEmitter(await eventEmitterV1.getAddress());
+  }
 
   // Writing to a JSON file
   fs.writeFileSync(

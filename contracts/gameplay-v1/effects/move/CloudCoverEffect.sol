@@ -13,14 +13,19 @@ contract CloudCoverEffect is BaseMoveStatusEffectWithoutStorageV1 {
     function applyEffect(
         IMoveV1 move,
         uint256 randomness
-    ) external view override returns (IMoveV1) {
-        if (
-            move.moveType() == IMoveV1.MoveType.Damage &&
-            isRandomHit(randomness, name(), chance)
-        ) {
-            return IMoveV1(address(0));
+    ) external override returns (IMoveV1 returnMove) {
+        returnMove = move;
+
+        bool isHit = move.moveType() == IMoveV1.MoveType.Damage && isRandomHit(randomness, name(), chance);
+        if (isHit) {
+            returnMove = IMoveV1(address(0));
         }
-        return move;
+
+        emitBattleLogStatusEffect(
+            0,
+            address(this),
+            isHit ? 1 : 0
+        );
     }
 
     function group()

@@ -10,10 +10,16 @@ contract DamageOverTimeEffect is BaseMonsterStatusEffectWithStorageV1 {
     function applyEffect(
         IMonsterV1.Monster memory monster,
         uint256 randomness
-    ) external view returns (IMonsterV1.Monster memory) {
+    ) external returns (IMonsterV1.Monster memory) {
         uint16 damage = abi.decode(store[monster.tokenId], (uint16));
 
         monster.hp = monster.hp.sub(damage);
+
+        emitBattleLogStatusEffect(
+            monster.tokenId,
+            address(this),
+            damage
+        );
 
         return monster;
     }

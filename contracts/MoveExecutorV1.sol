@@ -257,7 +257,7 @@ contract MoveExecutorV1 is IMoveExecutorV1 {
         IBaseStatusEffectV1.StatusEffectWrapper[] memory statusEffects,
         uint256 randomness,
         IMonsterStatusEffectV1.Stage stage
-    ) internal view returns (IMonsterV1.Monster memory modifiedMon) {
+    ) internal returns (IMonsterV1.Monster memory modifiedMon) {
         modifiedMon = monster;
 
         for (uint256 i = 0; i < statusEffects.length; i++) {
@@ -310,7 +310,7 @@ contract MoveExecutorV1 is IMoveExecutorV1 {
         IBaseStatusEffectV1.StatusEffectWrapper[] memory statusEffects,
         uint256 randomness,
         IMoveStatusEffectV1.Stage stage
-    ) internal view returns (IMoveV1) {
+    ) internal returns (IMoveV1) {
         IMoveV1 modifiedMove = move;
 
         for (uint256 i = 0; i < statusEffects.length; i++) {

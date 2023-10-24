@@ -7,14 +7,20 @@ contract TailwindEffect is BaseMoveStatusEffectWithoutStorageV1 {
     function applyEffect(
         IMoveV1 move,
         uint256
-    ) external pure returns (IMoveV1) {
+    ) external view returns (IMoveV1) {
         return move;
     }
 
     function applyEffect(
         uint256 randomness
-    ) external pure override returns (bool) {
-        return isRandomHit(randomness, name(), 40);
+    ) external override returns (bool isHit) {
+        isHit = isRandomHit(randomness, name(), 40);
+
+        emitBattleLogStatusEffect(
+            0,
+            address(this),
+            isHit ? 1 : 0
+        );
     }
 
     function group()

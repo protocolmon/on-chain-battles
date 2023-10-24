@@ -18,7 +18,7 @@ interface IBaseStatusEffectV1 {
         uint8 remainingTurns;
     }
 
-    function applyEffect(uint256 randomness) external view returns (bool);
+    function applyEffect(uint256 randomness) external returns (bool);
 
     function group() external view returns (StatusEffectGroup);
 

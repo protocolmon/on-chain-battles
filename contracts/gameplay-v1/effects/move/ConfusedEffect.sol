@@ -9,16 +9,22 @@ contract ConfusedEffect is BaseMoveStatusEffectWithoutStorageV1 {
     function applyEffect(
         IMoveV1 move,
         uint256 randomness
-    ) external view override returns (IMoveV1) {
-        // 30% change to miss attack
-        if (
-            move.moveType() == IMoveV1.MoveType.Damage &&
+    ) external override returns (IMoveV1 returnMove) {
+        returnMove = move;
+
+        bool isHit = move.moveType() == IMoveV1.MoveType.Damage &&
             isRandomHit(randomness, name(), 30) &&
-            moveToConfusedMove[address(move)] != address(0)
-        ) {
-            return IMoveV1(moveToConfusedMove[address(move)]);
+            moveToConfusedMove[address(move)] != address(0);
+
+        if (isHit) {
+            returnMove = IMoveV1(moveToConfusedMove[address(move)]);
         }
-        return move;
+
+        emitBattleLogStatusEffect(
+            0,
+            address(this),
+            isHit ? 1 : 0
+        );
     }
 
     function group()

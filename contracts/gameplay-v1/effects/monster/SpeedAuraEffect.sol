@@ -4,11 +4,19 @@ pragma solidity ^0.8.21;
 import "../../../abstract/BaseMonsterStatusEffectWithoutStorageV1.sol";
 
 contract SpeedAuraEffect is BaseMonsterStatusEffectWithoutStorageV1 {
+    uint16 constant public BOOST_VALUE = 20;
+
     function applyEffect(
         IMonsterV1.Monster memory monster,
         uint256
-    ) external view returns (IMonsterV1.Monster memory) {
-        monster.speed += 20;
+    ) external returns (IMonsterV1.Monster memory) {
+        monster.speed += BOOST_VALUE;
+
+        emitBattleLogStatusEffect(
+            monster.tokenId,
+            address(this),
+            BOOST_VALUE
+        );
 
         return monster;
     }
@@ -17,7 +25,7 @@ contract SpeedAuraEffect is BaseMonsterStatusEffectWithoutStorageV1 {
         IMonsterV1.Monster memory monster,
         uint256
     ) external view override returns (IMonsterV1.Monster memory) {
-        monster.speed -= 20;
+        monster.speed -= BOOST_VALUE;
 
         return monster;
     }

@@ -13,7 +13,7 @@ interface IMonsterStatusEffectV1 {
     function applyEffect(
         IMonsterV1.Monster memory monster,
         uint256 randomness
-    ) external view returns (IMonsterV1.Monster memory);
+    ) external returns (IMonsterV1.Monster memory);
 
     function rewindEffect(
         IMonsterV1.Monster memory monster,
