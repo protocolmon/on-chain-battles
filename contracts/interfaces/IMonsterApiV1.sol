@@ -20,6 +20,8 @@ interface IMonsterApiV1 {
         Streamhog
     }
 
+    function createMonsterByName(Monster monster) external returns (uint256);
+
     function getMonster(
         uint256 tokenId
     ) external view returns (IMonsterV1.Monster memory);

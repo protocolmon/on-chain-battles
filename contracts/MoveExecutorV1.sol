@@ -181,7 +181,7 @@ contract MoveExecutorV1 is IMoveExecutorV1 {
         pure
         returns (IMonsterV1.Monster memory)
     {
-        return IMonsterV1.Monster(0, IMonsterV1.Element.None, 0, 0, 0, 0, 0);
+        return IMonsterV1.Monster(0, IMonsterV1.Element.None, 0, 0, 0, 0, 0, 0);
     }
 
     function getZeroMove() internal pure returns (IMoveV1) {

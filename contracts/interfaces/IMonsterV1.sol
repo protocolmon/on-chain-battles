@@ -21,5 +21,7 @@ interface IMonsterV1 {
         uint16 speed;
         // @dev Main purpose of this field is to avoid heal move exceeding initial hp
         uint16 hpInitial;
+        // @dev This can be removed later when using real nfts
+        uint16 monsterType;
     }
 }

@@ -40,6 +40,15 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         uint256 round;
     }
 
+    struct MatchView {
+        uint256 id;
+        Match _match;
+        IMonsterV1.Monster challengerFirstMonster;
+        IMonsterV1.Monster challengerSecondMonster;
+        IMonsterV1.Monster opponentFirstMonster;
+        IMonsterV1.Monster opponentSecondMonster;
+    }
+
     struct StatusEffectsContainer {
         uint256 statusEffectCount;
         mapping(uint256 => IBaseStatusEffectV1.StatusEffectWrapper) statusEffects;
@@ -55,6 +64,9 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     mapping(uint256 => Match) public matches;
     mapping(uint256 => IMonsterV1.Monster) public monsters;
     mapping(uint256 => StatusEffectsContainer) public statusEffects;
+
+    /// @dev This allows easier access from the frontend, only one match per owner
+    mapping(address => uint256) public accountToMatch;
 
     event MatchJoined(
         uint256 indexed matchId,
@@ -112,7 +124,18 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         timeout = _timeout;
     }
 
-    function join(uint256 firstMonsterId, uint256 secondMonsterId) external {
+    function createAndJoin(IMonsterApiV1.Monster firstMonster, IMonsterApiV1.Monster secondMonster) external {
+        uint256 firstMonsterTokenId = monsterApi.createMonsterByName(firstMonster);
+        uint256 secondMonsterTokenId = monsterApi.createMonsterByName(secondMonster);
+
+        if (queuedTeam.owner == msg.sender) {
+            withdraw();
+        }
+
+        join(firstMonsterTokenId, secondMonsterTokenId);
+    }
+
+    function join(uint256 firstMonsterId, uint256 secondMonsterId) public {
         monsters[firstMonsterId] = monsterApi.getMonster(firstMonsterId);
         monsters[secondMonsterId] = monsterApi.getMonster(secondMonsterId);
 
@@ -121,6 +144,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
 
         if (queuedTeam.firstMonsterId == 0) {
             queuedTeam = Team(msg.sender, firstMonsterId, secondMonsterId);
+            accountToMatch[msg.sender] = 0;
             return;
         }
 
@@ -128,6 +152,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             queuedTeam.owner != msg.sender,
             "MatchMakerV2: cannot play against yourself"
         );
+
         matches[++matchCount] = Match(
             queuedTeam,
             Team(msg.sender, firstMonsterId, secondMonsterId),
@@ -138,6 +163,9 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             0
         );
 
+        accountToMatch[queuedTeam.owner] = matchCount;
+        accountToMatch[msg.sender] = matchCount;
+
         emit MatchJoined(
             matchCount,
             queuedTeam.owner == address(0) ? msg.sender : queuedTeam.owner,
@@ -147,7 +175,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         delete queuedTeam;
     }
 
-    function withdraw() external {
+    function withdraw() public {
         if (queuedTeam.owner == msg.sender) {
             delete queuedTeam;
             emit WithdrawnBeforeMatch(msg.sender);
@@ -457,5 +485,22 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         for (uint256 i = 0; i < effects.length; i++) {
             statusEffects[monsterId].statusEffects[i] = effects[i];
         }
+    }
+
+    /**************************************************************************
+     * Utility view functions for frontend
+     *************************************************************************/
+    function getMatchByUser(address user) external view returns (MatchView memory) {
+        uint256 matchId = accountToMatch[user];
+        Match storage _match = matches[matchId];
+        return
+            MatchView(
+                matchId,
+                _match,
+                monsters[_match.challengerTeam.firstMonsterId],
+                monsters[_match.challengerTeam.secondMonsterId],
+                monsters[_match.opponentTeam.firstMonsterId],
+                monsters[_match.opponentTeam.secondMonsterId]
+            );
     }
 }

@@ -18,7 +18,8 @@ contract MonsterApiV1 is IMonsterApiV1 {
         uint16 hp,
         uint16 attack,
         uint16 defense,
-        uint16 speed
+        uint16 speed,
+        Monster monster
     ) public {
         _monsters[tokenId] = IMonsterV1.Monster(
             tokenId,
@@ -27,13 +28,14 @@ contract MonsterApiV1 is IMonsterApiV1 {
             attack,
             defense,
             speed,
-            hp
+            hp,
+            uint16(monster)
         );
 
         emit MonsterCreated(tokenId);
     }
 
-    function createMonsterByName(Monster monster) external {
+    function createMonsterByName(Monster monster) external returns (uint256) {
         IMonsterV1.Element element;
         uint16 hp = 100;
         uint16 attack = 100;
@@ -105,7 +107,9 @@ contract MonsterApiV1 is IMonsterApiV1 {
             revert("Unknown monster");
         }
 
-        createMonster(++monsterCount, element, hp, attack, defense, speed);
+        createMonster(++monsterCount, element, hp, attack, defense, speed, monster);
+
+        return monsterCount;
     }
 
     function getMonster(
