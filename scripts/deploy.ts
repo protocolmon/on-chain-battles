@@ -26,6 +26,10 @@ async function main() {
     effects: {},
   };
 
+  const { address: contractApiV1Address } =
+    await deployContract("ContractApiV1");
+  output.contracts.ContractApiV1 = contractApiV1Address;
+
   const { address: monsterApiV1Address } = await deployContract("MonsterApiV1");
   const { address: moveExecutorV1Address } =
     await deployContract("MoveExecutorV1");
@@ -191,6 +195,22 @@ async function main() {
     `${__dirname}/../cli/contracts.generated.json`,
     JSON.stringify(output, null, 2),
   );
+
+  // iterate through the generated contracts and register them all on the contract api
+  const contractApiV1 = await ethers.getContractAt(
+    "ContractApiV1",
+    contractApiV1Address,
+  );
+  for (const key of Object.keys(output)) {
+    for (const subKey of Object.keys(output[key])) {
+      console.log(`Registering ${subKey} at contract api...`);
+      await contractApiV1.setContract(
+        parseInt(process.env.VERSION || "0"),
+        subKey,
+        output[key][subKey],
+      );
+    }
+  }
 
   console.log("All addresses have been written to deployed_contracts.json");
 }

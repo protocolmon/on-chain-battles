@@ -8,6 +8,8 @@ This is a first approach for building fun on-chain monster battles on EVM compat
 
 More info coming soon...
 
+- Access control is not implemented yet
+
 ## License
 
 This project is licensed under the Apache 2 License - see the [LICENSE](LICENSE) file for details
