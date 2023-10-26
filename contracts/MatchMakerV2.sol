@@ -57,10 +57,11 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     IMonsterApiV1 public monsterApi;
     IMoveExecutorV1 public moveExecutor;
 
-    Team public queuedTeam;
     uint256 public timeout;
     uint256 public matchCount;
 
+    /// @dev mode => Team
+    mapping(uint256 => Team) public queuedTeams;
     mapping(uint256 => Match) public matches;
     mapping(uint256 => IMonsterV1.Monster) public monsters;
     mapping(uint256 => StatusEffectsContainer) public statusEffects;
@@ -124,37 +125,41 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         timeout = _timeout;
     }
 
-    function createAndJoin(IMonsterApiV1.Monster firstMonster, IMonsterApiV1.Monster secondMonster) external {
+    function createAndJoin(
+        uint256 mode,
+        IMonsterApiV1.Monster firstMonster,
+        IMonsterApiV1.Monster secondMonster
+    ) external {
         uint256 firstMonsterTokenId = monsterApi.createMonsterByName(firstMonster);
         uint256 secondMonsterTokenId = monsterApi.createMonsterByName(secondMonster);
 
-        if (queuedTeam.owner == msg.sender) {
-            withdraw();
+        if (queuedTeams[mode].owner == msg.sender) {
+            withdraw(mode);
         }
 
-        join(firstMonsterTokenId, secondMonsterTokenId);
+        join(mode, firstMonsterTokenId, secondMonsterTokenId);
     }
 
-    function join(uint256 firstMonsterId, uint256 secondMonsterId) public {
+    function join(uint256 mode, uint256 firstMonsterId, uint256 secondMonsterId) public {
         monsters[firstMonsterId] = monsterApi.getMonster(firstMonsterId);
         monsters[secondMonsterId] = monsterApi.getMonster(secondMonsterId);
 
         logMonsterStatus(firstMonsterId, 0);
         logMonsterStatus(secondMonsterId, 0);
 
-        if (queuedTeam.firstMonsterId == 0) {
-            queuedTeam = Team(msg.sender, firstMonsterId, secondMonsterId);
+        if (queuedTeams[mode].firstMonsterId == 0) {
+            queuedTeams[mode] = Team(msg.sender, firstMonsterId, secondMonsterId);
             accountToMatch[msg.sender] = 0;
             return;
         }
 
         require(
-            queuedTeam.owner != msg.sender,
+            queuedTeams[mode].owner != msg.sender,
             "MatchMakerV2: cannot play against yourself"
         );
 
         matches[++matchCount] = Match(
-            queuedTeam,
+            queuedTeams[mode],
             Team(msg.sender, firstMonsterId, secondMonsterId),
             Move(0, IMoveV1(address(0)), 0),
             Move(0, IMoveV1(address(0)), 0),
@@ -163,21 +168,21 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             0
         );
 
-        accountToMatch[queuedTeam.owner] = matchCount;
+        accountToMatch[queuedTeams[mode].owner] = matchCount;
         accountToMatch[msg.sender] = matchCount;
 
         emit MatchJoined(
             matchCount,
-            queuedTeam.owner == address(0) ? msg.sender : queuedTeam.owner,
+            queuedTeams[mode].owner == address(0) ? msg.sender : queuedTeams[mode].owner,
             msg.sender
         );
 
-        delete queuedTeam;
+        delete queuedTeams[mode];
     }
 
-    function withdraw() public {
-        if (queuedTeam.owner == msg.sender) {
-            delete queuedTeam;
+    function withdraw(uint256 mode) public {
+        if (queuedTeams[mode].owner == msg.sender) {
+            delete queuedTeams[mode];
             emit WithdrawnBeforeMatch(msg.sender);
         }
     }

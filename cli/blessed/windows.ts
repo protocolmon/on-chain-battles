@@ -96,7 +96,7 @@ async function exit(code: number) {
   try {
     const matchMakerV2 =
       await getContractInstance<MatchMakerV2>("MatchMakerV2");
-    await matchMakerV2.withdraw();
+    await matchMakerV2.withdraw(0);
   } catch (e) {
     console.error(e);
   }

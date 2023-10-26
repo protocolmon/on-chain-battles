@@ -485,7 +485,7 @@ async function startMatchmaking(selectedMonsters: string[]) {
   // const { default: chalk } = await import("chalk");
 
   const matchMakerV2 = await getContractInstance<MatchMakerV2>("MatchMakerV2");
-  const [addressInQueue] = await matchMakerV2.queuedTeam();
+  const [addressInQueue] = await matchMakerV2.queuedTeams(0);
   if (addressInQueue == ethers.ZeroAddress) {
     logger.log(`Waiting for another player...`);
   }
@@ -497,7 +497,7 @@ async function startMatchmaking(selectedMonsters: string[]) {
   logger.log(
     `Submitting monster ${firstMonsterId} and ${secondMonsterId} to matchmaking...`,
   );
-  const tx = await matchMakerV2.join(firstMonsterId, secondMonsterId, {
+  const tx = await matchMakerV2.join(0, firstMonsterId, secondMonsterId, {
     gasLimit: 1_000_000,
   });
   const receipt = await tx.wait();

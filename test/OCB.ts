@@ -132,15 +132,31 @@ describe("OCB", function () {
   async function createMockMonsters(monsterApi: MonsterApiV1) {
     // two of each type
     for (const id of ["1", "2"]) {
-      await monsterApi.createMonster(id, ELEMENTS.FIRE, 100, 100, 100, 100);
+      await monsterApi.createMonster(id, ELEMENTS.FIRE, 100, 100, 100, 100, id);
     }
 
     for (const id of ["3", "4"]) {
-      await monsterApi.createMonster(id, ELEMENTS.WATER, 100, 100, 100, 100);
+      await monsterApi.createMonster(
+        id,
+        ELEMENTS.WATER,
+        100,
+        100,
+        100,
+        100,
+        id,
+      );
     }
 
     for (const id of ["5", "6"]) {
-      await monsterApi.createMonster(id, ELEMENTS.NATURE, 100, 100, 100, 100);
+      await monsterApi.createMonster(
+        id,
+        ELEMENTS.NATURE,
+        100,
+        100,
+        100,
+        100,
+        id,
+      );
     }
   }
 
@@ -212,8 +228,8 @@ describe("OCB", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).join("1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).join("4", "5"); // join with water and nature
+      await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
+      await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
 
       expect(await matchMakerV2.matchCount()).to.equal(1);
 
@@ -249,8 +265,8 @@ describe("OCB", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).join("1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).join("4", "5"); // join with water and nature
+      await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
+      await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
 
       expect(await matchMakerV2.matchCount()).to.equal(1);
 
@@ -286,8 +302,8 @@ describe("OCB", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).join("1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).join("4", "5"); // join with water and nature
+      await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
+      await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
 
       expect(await matchMakerV2.matchCount()).to.equal(1);
 
@@ -316,8 +332,8 @@ describe("OCB", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).join("1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).join("4", "5"); // join with water and nature
+      await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
+      await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
 
       expect(await matchMakerV2.matchCount()).to.equal(1);
 
@@ -346,8 +362,8 @@ describe("OCB", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).join("1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).join("4", "5"); // join with water and nature
+      await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
+      await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
 
       expect(await matchMakerV2.matchCount()).to.equal(1);
 
@@ -382,8 +398,8 @@ describe("OCB", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).join("1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).join("4", "5"); // join with water and nature
+      await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
+      await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
 
       const matchId = await matchMakerV2.matchCount();
 
@@ -440,8 +456,8 @@ describe("OCB", function () {
 
       await cloudCoverEffect.setChance(100);
 
-      await matchMakerV2.connect(account2).join("1", "2"); // join with fire and water
-      await matchMakerV2.connect(account3).join("3", "4"); // join with water and nature
+      await matchMakerV2.connect(account2).join(0, "1", "2"); // join with fire and water
+      await matchMakerV2.connect(account3).join(0, "3", "4"); // join with water and nature
 
       let [, , monster1Hp, , , speed1] = await matchMakerV2.monsters(1);
       let [, , monster2Hp, , , speed2] = await matchMakerV2.monsters(3);
