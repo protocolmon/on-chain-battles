@@ -12,12 +12,10 @@ contract GenericEventLoggerV1 is IGenericEventLoggerV1 {
     uint256 constant MAX_EVENTS = 100;
 
     mapping(uint256 => Log[]) public logsByTokenId;
-
     mapping(uint256 => Log[]) public logsByMatchId;
 
     function logEventByTokenId(uint256 tokenId, string memory name, string[] memory data) public {
         emit TokenLogEvent(tokenId, name, data, block.timestamp);
-
         logsByTokenId[tokenId].push(Log(name, data, block.timestamp));
     }
 
@@ -29,58 +27,59 @@ contract GenericEventLoggerV1 is IGenericEventLoggerV1 {
 
     function logEventByMatchId(uint256 matchId, string memory name, string[] memory data) public {
         emit MatchLogEvent(matchId, name, data, block.timestamp);
-
         logsByMatchId[matchId].push(Log(name, data, block.timestamp));
     }
 
     function getEventLogs(uint256 matchId, uint256[] memory tokenIds, uint8 offset) external view returns (string memory) {
         // Get all event logs for the match ID and token IDs
-        Log[] memory logs = new Log[](MAX_EVENTS);
+        DisplayLog[] memory logs = new DisplayLog[](MAX_EVENTS);
 
-        uint256 logsLength = 0;
         uint256 logsIndex = 0;
 
-        for (uint256 i = offset; i < logsByMatchId[matchId].length; i++) {
-            if (logsLength == MAX_EVENTS) break;
-            logs[logsIndex] = logsByMatchId[matchId][i];
-            logsLength++;
+        for (uint256 i = offset; i < logsByMatchId[matchId].length && logsIndex < MAX_EVENTS; i++) {
+            logs[logsIndex].log = logsByMatchId[matchId][i];
+            logs[logsIndex].matchId = matchId;
             logsIndex++;
         }
 
-        for (uint256 t = 0; t < tokenIds.length; t++) {
-            for (uint256 i = offset; i < logsByTokenId[tokenIds[t]].length; i++) {
-                if (logsLength == MAX_EVENTS) break;
-                logs[logsIndex] = logsByTokenId[tokenIds[t]][i];
-                logsLength++;
+        for (uint256 t = 0; t < tokenIds.length && logsIndex < MAX_EVENTS; t++) {
+            for (uint256 i = offset; i < logsByTokenId[tokenIds[t]].length && logsIndex < MAX_EVENTS; i++) {
+                logs[logsIndex].log = logsByTokenId[tokenIds[t]][i];
+                logs[logsIndex].tokenId = tokenIds[t];
                 logsIndex++;
             }
         }
 
         // Convert the logs to a JSON string
-        return logsToJSON(logs, logsLength);
+        return logsToJSON(logs, logsIndex);
     }
 
-    function logsToJSON(Log[] memory logs, uint256 logsLength) internal pure returns (string memory) {
-        // Placeholder for the JSON-like structure
+    function logsToJSON(DisplayLog[] memory logs, uint256 logsLength) internal pure returns (string memory) {
         string memory json = "[";
 
         for (uint256 i = 0; i < logsLength; i++) {
             if (i != 0) {
                 json = string(abi.encodePacked(json, ","));
             }
-            json = string(abi.encodePacked(json, "{", "\"name\":\"", logs[i].name, "\",\"data\":["));
-            for (uint256 j = 0; j < logs[i].data.length; j++) {
+            json = string(abi.encodePacked(json, "{", "\"name\":\"", logs[i].log.name, "\",\"data\":["));
+
+            for (uint256 j = 0; j < logs[i].log.data.length; j++) {
                 if (j != 0) {
                     json = string(abi.encodePacked(json, ","));
                 }
-                json = string(abi.encodePacked(json, "\"", logs[i].data[j], "\""));
+                json = string(abi.encodePacked(json, "\"", logs[i].log.data[j], "\""));
             }
-            json = string(abi.encodePacked(json, "],\"timestamp\":", logs[i].timestamp.toString(), "}"));
+
+            if (logs[i].tokenId != 0) {
+                json = string(abi.encodePacked(json, "],\"tokenId\":", logs[i].tokenId.toString()));
+            } else {
+                json = string(abi.encodePacked(json, "],\"matchId\":", logs[i].matchId.toString()));
+            }
+
+            json = string(abi.encodePacked(json, ",\"timestamp\":", logs[i].log.timestamp.toString(), "}"));
         }
 
         json = string(abi.encodePacked(json, "]"));
-
-        // console.log("json %s", json);
 
         return json;
     }

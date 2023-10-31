@@ -8,6 +8,12 @@ interface IGenericEventLoggerV1 {
         uint256 timestamp;
     }
 
+    struct DisplayLog {
+        Log log;
+        uint256 tokenId;
+        uint256 matchId;
+    }
+
     event MatchLogEvent(uint256 matchId, string name, string[] data, uint256 timestamp);
     event TokenLogEvent(uint256 tokenId, string name, string[] data, uint256 timestamp);
 
