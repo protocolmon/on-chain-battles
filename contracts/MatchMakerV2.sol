@@ -57,6 +57,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         IMonsterV1.Monster challengerSecondMonster;
         IMonsterV1.Monster opponentFirstMonster;
         IMonsterV1.Monster opponentSecondMonster;
+        address eventLogger;
     }
 
     struct StatusEffectsContainer {
@@ -172,6 +173,16 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         if (queuedTeams[mode].owner == msg.sender) {
             delete queuedTeams[mode];
             emit WithdrawnBeforeMatch(msg.sender);
+        }
+    }
+
+    function withdrawFromMatch(uint256 matchId) public {
+        accountToMatch[msg.sender] = 0;
+        // remove the accountToMatch also for the other player
+        if (matches[matchId].challengerTeam.owner == msg.sender) {
+            accountToMatch[matches[matchId].opponentTeam.owner] = 0;
+        } else {
+            accountToMatch[matches[matchId].challengerTeam.owner] = 0;
         }
     }
 
@@ -527,7 +538,8 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
                 monsters[_match.challengerTeam.firstMonsterId],
                 monsters[_match.challengerTeam.secondMonsterId],
                 monsters[_match.opponentTeam.firstMonsterId],
-                monsters[_match.opponentTeam.secondMonsterId]
+                monsters[_match.opponentTeam.secondMonsterId],
+                address(eventLogger)
             );
     }
 }

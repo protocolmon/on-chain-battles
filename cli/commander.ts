@@ -45,6 +45,7 @@ let activeOpponentMonsterId: bigint = BigInt(0);
 let statusEffectsByMonsterId: Map<bigint, StatusEffect[]> = new Map();
 
 const GAS_LIMIT = 3_000_000;
+const MODE = 2;
 
 const logMonsterStatus = async (
   monsterId: bigint,
@@ -131,7 +132,21 @@ async function chooseAttack(
   const commit = await getCommitHash(attackAddress!);
   lastAttack = attackAddress!;
 
-  await matchMakerV2.commit(matchId, commit, { gasLimit: GAS_LIMIT });
+  const commitTx = await matchMakerV2.commit(matchId, commit, {
+    gasLimit: GAS_LIMIT,
+  });
+  await commitTx.wait();
+
+  const revealTx = await matchMakerV2.reveal(
+    matchId,
+    lastAttack,
+    ethers.encodeBytes32String("secret"),
+    {
+      gasLimit: GAS_LIMIT,
+    },
+  );
+  logger.log(`Reveal tx was ${revealTx.hash}`);
+  await revealTx.wait();
 }
 
 async function updateStatusEffectBoxes(isOpponent: boolean) {
@@ -361,47 +376,6 @@ async function setupEventListener(matchMakerV2: MatchMakerV2): Promise<bigint> {
             ";",
           )}`,
         );
-
-        if (name === "Commit") {
-          logger.log(
-            `${
-              data[0] === selfAddress ? "You" : "Opponent"
-            } committed move with hash = ${data[1]}`,
-          );
-
-          // Track the players that have committed their moves
-          playersMovesCommitted.add(data[0]);
-
-          // If both players have committed their moves
-          if (playersMovesCommitted.size >= 2) {
-            logger.log(`Revealing moves...`);
-            playersMovesCommitted.clear();
-
-            // clear status effects
-            logger.log("Resetting status effects...");
-            statusEffectsByMonsterId.set(firstMonsterId, []);
-            statusEffectsByMonsterId.set(secondMonsterId, []);
-            statusEffectsByMonsterId.set(firstOpponentMonsterId, []);
-            statusEffectsByMonsterId.set(secondOpponentMonsterId, []);
-
-            try {
-              const matchMakerV2Fresh =
-                await getContractInstance<MatchMakerV2>("MatchMakerV2");
-              const tx = await matchMakerV2Fresh.reveal(
-                matchId,
-                lastAttack,
-                ethers.encodeBytes32String("secret"),
-                {
-                  gasLimit: GAS_LIMIT,
-                },
-              );
-              logger.log(`Reveal tx was ${tx.hash}`);
-              await tx.wait();
-            } catch (err: any) {
-              logger.log(chalk.redBright(err.message));
-            }
-          }
-        }
       },
     );
   });
@@ -473,7 +447,7 @@ async function startMatchmaking(selectedMonsters: string[]) {
   logger.log(`Joining...`);
   try {
     const tx = await matchMakerV2.createAndJoin(
-      0,
+      MODE,
       selectedMonsters[0],
       selectedMonsters[1],
       {

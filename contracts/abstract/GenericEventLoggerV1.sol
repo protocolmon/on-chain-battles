@@ -33,7 +33,7 @@ contract GenericEventLoggerV1 is IGenericEventLoggerV1 {
         logsByMatchId[matchId].push(Log(name, data, block.timestamp));
     }
 
-    function getEventLogs(uint256 matchId, uint256 tokenId1, uint256 tokenId2, uint8 offset) external view returns (string memory) {
+    function getEventLogs(uint256 matchId, uint256[] memory tokenIds, uint8 offset) external view returns (string memory) {
         // Get all event logs for the match ID and token IDs
         Log[] memory logs = new Log[](MAX_EVENTS);
 
@@ -47,18 +47,13 @@ contract GenericEventLoggerV1 is IGenericEventLoggerV1 {
             logsIndex++;
         }
 
-        for (uint256 i = offset; i < logsByTokenId[tokenId1].length; i++) {
-            if (logsLength == MAX_EVENTS) break;
-            logs[logsIndex] = logsByTokenId[tokenId1][i];
-            logsLength++;
-            logsIndex++;
-        }
-
-        for (uint256 i = offset; i < logsByTokenId[tokenId2].length; i++) {
-            if (logsLength == MAX_EVENTS) break;
-            logs[logsIndex] = logsByTokenId[tokenId2][i];
-            logsLength++;
-            logsIndex++;
+        for (uint256 t = 0; t < tokenIds.length; t++) {
+            for (uint256 i = offset; i < logsByTokenId[tokenIds[t]].length; i++) {
+                if (logsLength == MAX_EVENTS) break;
+                logs[logsIndex] = logsByTokenId[tokenIds[t]][i];
+                logsLength++;
+                logsIndex++;
+            }
         }
 
         // Convert the logs to a JSON string

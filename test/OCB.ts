@@ -465,10 +465,11 @@ describe("OCB", function () {
       );
 
       const firstStrikeEvent = attackResults.find(
-        (event) => event.name === "LogEvent" && event.args[0] === "FirstStrike",
+        (event) =>
+          event.name === "MatchLogEvent" && event.args[1] === "FirstStrike",
       );
 
-      expect(firstStrikeEvent.args[1][0]).to.equal("1");
+      expect(firstStrikeEvent.args[2][0]).to.equal("1");
     });
 
     it("should have issues fixed that occured in a battle on 2023-10-20", async () => {
@@ -691,7 +692,7 @@ describe("OCB", function () {
     );
 
     const events = JSON.parse(
-      await genericEventLoggerV1.getEventLogs(UINT256_MAX, "1", "4", "0"),
+      await genericEventLoggerV1.getEventLogs(UINT256_MAX, ["1", "4"], "0"),
     );
 
     expect(events.length).to.equal(4);

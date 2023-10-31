@@ -1,6 +1,7 @@
 import * as blessed from "blessed";
 import { getContractInstance } from "../utils/contracts";
 import { MatchMakerV2 } from "../../typechain-types";
+import { ethers } from "hardhat";
 
 // Create a blessed screen
 export const screen = blessed.screen({
@@ -96,7 +97,14 @@ async function exit(code: number) {
   try {
     const matchMakerV2 =
       await getContractInstance<MatchMakerV2>("MatchMakerV2");
-    await matchMakerV2.withdraw(0);
+
+    const user = await (await ethers.getSigners())[0].address;
+    const [matchId] = await matchMakerV2.getMatchByUser(user);
+    if (matchId) {
+      await matchMakerV2.withdrawFromMatch(matchId);
+    } else {
+      await matchMakerV2.withdraw(0);
+    }
   } catch (e) {
     console.error(e);
   }
