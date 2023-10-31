@@ -3,15 +3,25 @@ pragma solidity ^0.8.21;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
+import { StringsLibV1 } from "./lib/StringsLibV1.sol";
 import { IMoveV1 } from "./interfaces/IMoveV1.sol";
 import { IMoveExecutorV1 } from "./interfaces/IMoveExecutorV1.sol";
 import { IMonsterV1 } from "./interfaces/IMonsterV1.sol";
 import { IMonsterApiV1 } from "./interfaces/IMonsterApiV1.sol";
 import { IBaseStatusEffectV1 } from "./interfaces/IBaseStatusEffectV1.sol";
 import { IMoveStatusEffectV1 } from "./interfaces/IMoveStatusEffectV1.sol";
+import "./interfaces/IGenericEventLoggerV1.sol";
 
 contract MatchMakerV2 is Initializable, OwnableUpgradeable {
+    using StringsLibV1 for address;
+    using StringsLibV1 for bytes32;
+
+    using Strings for uint256;
+    using Strings for uint16;
+    using Strings for uint8;
+
     enum Phase {
         Commit,
         Reveal,
@@ -56,6 +66,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
 
     IMonsterApiV1 public monsterApi;
     IMoveExecutorV1 public moveExecutor;
+    IGenericEventLoggerV1 public eventLogger;
 
     uint256 public timeout;
     uint256 public matchCount;
@@ -69,36 +80,6 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     /// @dev This allows easier access from the frontend, only one match per owner
     mapping(address => uint256) public accountToMatch;
 
-    event MatchJoined(
-        uint256 indexed matchId,
-        address indexed challenger,
-        address indexed opponent
-    );
-
-    event MoveCommitted(
-        uint256 indexed matchId,
-        address indexed player,
-        bytes32 indexed commit
-    );
-
-    event MoveRevealed(
-        uint256 indexed matchId,
-        address indexed player,
-        IMoveV1 indexed move
-    );
-
-    event MonsterStatusLog(
-        uint256 indexed monsterId,
-        uint256 indexed round,
-        uint8 element,
-        uint16 hp,
-        uint16 attack,
-        uint16 defense,
-        uint16 speed
-    );
-
-    event FirstStrike(uint256 indexed matchId, uint256 indexed monsterId);
-    event GameOver(uint256 indexed matchId, address indexed winner);
     event WithdrawnBeforeMatch(address indexed player);
 
     event StatusEffectLog(
@@ -116,12 +97,14 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     function initialize(
         IMonsterApiV1 _monsterApi,
         IMoveExecutorV1 _moveExecutor,
+        IGenericEventLoggerV1 _eventLogger,
         uint256 _timeout
     ) external initializer {
         __Ownable_init(msg.sender);
 
         monsterApi = _monsterApi;
         moveExecutor = _moveExecutor;
+        eventLogger = _eventLogger;
         timeout = _timeout;
     }
 
@@ -133,14 +116,14 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         uint256 firstMonsterTokenId = monsterApi.createMonsterByName(firstMonster);
         uint256 secondMonsterTokenId = monsterApi.createMonsterByName(secondMonster);
 
-        if (queuedTeams[mode].owner == msg.sender) {
-            withdraw(mode);
-        }
+        withdraw(mode);
 
         join(mode, firstMonsterTokenId, secondMonsterTokenId);
     }
 
     function join(uint256 mode, uint256 firstMonsterId, uint256 secondMonsterId) public {
+        require(accountToMatch[msg.sender] == 0, "MatchMakerV2: already joined");
+
         monsters[firstMonsterId] = monsterApi.getMonster(firstMonsterId);
         monsters[secondMonsterId] = monsterApi.getMonster(secondMonsterId);
 
@@ -149,7 +132,6 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
 
         if (queuedTeams[mode].firstMonsterId == 0) {
             queuedTeams[mode] = Team(msg.sender, firstMonsterId, secondMonsterId);
-            accountToMatch[msg.sender] = 0;
             return;
         }
 
@@ -171,10 +153,16 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         accountToMatch[queuedTeams[mode].owner] = matchCount;
         accountToMatch[msg.sender] = matchCount;
 
-        emit MatchJoined(
+        string[] memory data = new string[](2);
+        data[0] = queuedTeams[mode].owner == address(0) ?
+            msg.sender.toString() :
+            queuedTeams[mode].owner.toString();
+        data[1] = msg.sender.toString();
+
+        eventLogger.logEventByMatchId(
             matchCount,
-            queuedTeams[mode].owner == address(0) ? msg.sender : queuedTeams[mode].owner,
-            msg.sender
+            "MatchFound",
+            data
         );
 
         delete queuedTeams[mode];
@@ -235,7 +223,15 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             _match.timeout = block.timestamp + timeout;
         }
 
-        emit MoveCommitted(matchId, msg.sender, _commit);
+        string[] memory data = new string[](2);
+        data[0] = msg.sender.toString();
+        data[1] = _commit.toString();
+
+        eventLogger.logEventByMatchId(
+            matchId,
+            "Commit",
+            data
+        );
     }
 
     function reveal(uint256 matchId, address move, bytes32 secret) external {
@@ -267,7 +263,15 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
 
         relevantMove.move = IMoveV1(move);
 
-        emit MoveRevealed(matchId, msg.sender, IMoveV1(move));
+        string[] memory data = new string[](2);
+        data[0] = msg.sender.toString();
+        data[1] = address(move).toString();
+
+        eventLogger.logEventByMatchId(
+            matchId,
+            "Reveal",
+            data
+        );
 
         if (
             address(_match.currentChallengerMove.move) != address(0) &&
@@ -313,7 +317,11 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
 
             _match.round++;
             storeStatusEffects(opponentMonster.tokenId, opponentOutputEffects);
-            emit FirstStrike(matchId, firstStrikerId);
+            eventLogger.logEventByMatchId(
+                matchId,
+                "FirstStrike",
+                firstStrikerId
+            );
             logMonsterStatus(challengerMonster.tokenId, _match.round);
             logMonsterStatus(opponentMonster.tokenId, _match.round);
             logStatusEffects(challengerMonster.tokenId, _match.round);
@@ -357,12 +365,17 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
                     monsters[_match.opponentTeam.secondMonsterId].hp == 0)
             ) {
                 _match.phase = Phase.GameOver;
-                emit GameOver(
+
+                string[] memory data = new string[](1);
+                data[0] = monsters[_match.challengerTeam.firstMonsterId].hp == 0 &&
+                monsters[_match.challengerTeam.secondMonsterId].hp == 0
+                    ? _match.opponentTeam.owner.toString()
+                    : _match.challengerTeam.owner.toString();
+
+                eventLogger.logEventByMatchId(
                     matchId,
-                    monsters[_match.challengerTeam.firstMonsterId].hp == 0 &&
-                        monsters[_match.challengerTeam.secondMonsterId].hp == 0
-                        ? _match.opponentTeam.owner
-                        : _match.challengerTeam.owner
+                    "GameOver",
+                    data
                 );
             } else {
                 _match.phase = Phase.Commit;
@@ -410,14 +423,18 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     }
 
     function logMonsterStatus(uint256 monsterId, uint256 round) internal {
-        emit MonsterStatusLog(
+        string[] memory data = new string[](6);
+        data[0] = uint8(monsters[monsterId].element).toString();
+        data[1] = round.toString();
+        data[2] = monsters[monsterId].hp.toString();
+        data[3] = monsters[monsterId].attack.toString();
+        data[4] = monsters[monsterId].defense.toString();
+        data[5] = monsters[monsterId].speed.toString();
+
+        eventLogger.logEventByTokenId(
             monsterId,
-            round,
-            uint8(monsters[monsterId].element),
-            monsters[monsterId].hp,
-            monsters[monsterId].attack,
-            monsters[monsterId].defense,
-            monsters[monsterId].speed
+            "MonsterStatus",
+            data
         );
     }
 
@@ -473,11 +490,16 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             i < statusEffects[monsterId].statusEffectCount;
             i++
         ) {
-            emit StatusEffectLog(
+            string[] memory data = new string[](2);
+            data[0] = address(statusEffects[monsterId].statusEffects[i].statusEffect).toString();
+            data[1] = statusEffects[monsterId].statusEffects[i]
+                .remainingTurns
+                .toString();
+
+            eventLogger.logEventByTokenId(
                 monsterId,
-                round,
-                address(statusEffects[monsterId].statusEffects[i].statusEffect),
-                statusEffects[monsterId].statusEffects[i].remainingTurns
+                "StatusEffect",
+                data
             );
         }
     }

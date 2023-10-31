@@ -56,7 +56,7 @@ contract WallBreakerMove is MoveV1 {
             input.attacker.tokenId,
             input.defender.tokenId,
             address(this),
-            damage,
+            int16(damage),
             elementalMultiplier,
             isCriticalHit
         );

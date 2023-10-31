@@ -1,6 +1,10 @@
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
-import { MatchMakerV2, MonsterApiV1 } from "../typechain-types";
+import {
+  GenericEventLoggerV1,
+  MatchMakerV2,
+  MonsterApiV1,
+} from "../typechain-types";
 import { Signer } from "ethers";
 
 const ONE_MINUTE = 60;
@@ -13,6 +17,10 @@ const ELEMENTS = {
   NATURE: 5,
   TOXIC: 6,
 };
+
+const UINT256_MAX = BigInt(
+  "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+);
 
 const getCommitHash = (move: string, secret: string = "secret") =>
   ethers.solidityPackedKeccak256(
@@ -31,16 +39,23 @@ describe("OCB", function () {
     const MonsterApiV1 = await ethers.getContractFactory("MonsterApiV1");
     const monsterApiV1 = await MonsterApiV1.deploy();
 
+    const GenericEventLoggerV1 = await ethers.getContractFactory(
+      "GenericEventLoggerV1",
+    );
+    const genericEventLoggerV1 = await GenericEventLoggerV1.deploy();
+
     const MatchMakerV2 = await ethers.getContractFactory("MatchMakerV2");
     const matchMakerV2 = await upgrades.deployProxy(MatchMakerV2, [
       await monsterApiV1.getAddress(),
       await moveExecutorV1.getAddress(),
+      await genericEventLoggerV1.getAddress(),
       ONE_MINUTE,
     ]);
 
     return {
       account2,
       account3,
+      eventLogger: genericEventLoggerV1,
       matchMakerV2: matchMakerV2 as unknown as MatchMakerV2,
       monsterApiV1,
       moveExecutorV1,
@@ -162,6 +177,7 @@ describe("OCB", function () {
 
   async function commit(
     matchMakerV2: MatchMakerV2,
+    eventLogger: GenericEventLoggerV1,
     user: Signer,
     matchId: number | bigint,
     move: string,
@@ -171,12 +187,13 @@ describe("OCB", function () {
       .commit(matchId, getCommitHash(move));
     const receipt = await tx.wait();
     return receipt!.logs.map((log) =>
-      matchMakerV2.interface.parseLog(log as unknown as any),
+      eventLogger.interface.parseLog(log as unknown as any),
     );
   }
 
   async function reveal(
     matchMakerV2: MatchMakerV2,
+    eventLogger: GenericEventLoggerV1,
     user: Signer,
     matchId: number | bigint,
     move: string,
@@ -186,12 +203,13 @@ describe("OCB", function () {
       .reveal(matchId, move, ethers.encodeBytes32String("secret"));
     const receipt = await tx.wait();
     return receipt!.logs.map((log) =>
-      matchMakerV2.interface.parseLog(log as unknown as any),
+      eventLogger.interface.parseLog(log as unknown as any),
     );
   }
 
   async function runAttacks(
     matchMakerV2: MatchMakerV2,
+    eventLogger: GenericEventLoggerV1,
     player1: Signer,
     player2: Signer,
     matchId: number | bigint,
@@ -200,11 +218,19 @@ describe("OCB", function () {
   ): Promise<any[]> {
     const events = [];
 
-    events.push(...(await commit(matchMakerV2, player1, matchId, move1)));
-    events.push(...(await commit(matchMakerV2, player2, matchId, move2)));
+    events.push(
+      ...(await commit(matchMakerV2, eventLogger, player1, matchId, move1)),
+    );
+    events.push(
+      ...(await commit(matchMakerV2, eventLogger, player2, matchId, move2)),
+    );
 
-    events.push(...(await reveal(matchMakerV2, player1, matchId, move1)));
-    events.push(...(await reveal(matchMakerV2, player2, matchId, move2)));
+    events.push(
+      ...(await reveal(matchMakerV2, eventLogger, player1, matchId, move1)),
+    );
+    events.push(
+      ...(await reveal(matchMakerV2, eventLogger, player2, matchId, move2)),
+    );
 
     return events;
   }
@@ -224,7 +250,8 @@ describe("OCB", function () {
     });
 
     it("should allow both players to apply a speed boost", async function () {
-      const { account2, account3, monsterApiV1, matchMakerV2 } = await deploy();
+      const { account2, account3, monsterApiV1, matchMakerV2, eventLogger } =
+        await deploy();
 
       await createMockMonsters(monsterApiV1);
 
@@ -239,6 +266,7 @@ describe("OCB", function () {
 
       await runAttacks(
         matchMakerV2,
+        eventLogger,
         account2,
         account3,
         matchId,
@@ -261,7 +289,8 @@ describe("OCB", function () {
     });
 
     it("should allow both players to apply a heal (even if makes no sense)", async function () {
-      const { account2, account3, monsterApiV1, matchMakerV2 } = await deploy();
+      const { account2, account3, monsterApiV1, matchMakerV2, eventLogger } =
+        await deploy();
 
       await createMockMonsters(monsterApiV1);
 
@@ -276,6 +305,7 @@ describe("OCB", function () {
 
       await runAttacks(
         matchMakerV2,
+        eventLogger,
         account2,
         account3,
         matchId,
@@ -298,7 +328,8 @@ describe("OCB", function () {
     });
 
     it("should destroy a cloud cover with purge buffs", async function () {
-      const { account2, account3, monsterApiV1, matchMakerV2 } = await deploy();
+      const { account2, account3, monsterApiV1, matchMakerV2, eventLogger } =
+        await deploy();
 
       await createMockMonsters(monsterApiV1);
 
@@ -313,6 +344,7 @@ describe("OCB", function () {
 
       await runAttacks(
         matchMakerV2,
+        eventLogger,
         account2,
         account3,
         matchId,
@@ -328,7 +360,8 @@ describe("OCB", function () {
     });
 
     it("should allow both players to apply a cloud cover", async function () {
-      const { account2, account3, monsterApiV1, matchMakerV2 } = await deploy();
+      const { account2, account3, monsterApiV1, matchMakerV2, eventLogger } =
+        await deploy();
 
       await createMockMonsters(monsterApiV1);
 
@@ -343,6 +376,7 @@ describe("OCB", function () {
 
       await runAttacks(
         matchMakerV2,
+        eventLogger,
         account2,
         account3,
         matchId,
@@ -358,7 +392,8 @@ describe("OCB", function () {
     });
 
     it("should allow basic gameplay", async function () {
-      const { account2, account3, monsterApiV1, matchMakerV2 } = await deploy();
+      const { account2, account3, monsterApiV1, matchMakerV2, eventLogger } =
+        await deploy();
 
       await createMockMonsters(monsterApiV1);
 
@@ -375,6 +410,7 @@ describe("OCB", function () {
         try {
           await runAttacks(
             matchMakerV2,
+            eventLogger,
             account2,
             account3,
             matchId,
@@ -394,7 +430,8 @@ describe("OCB", function () {
     });
 
     it("should execute heal before damage", async () => {
-      const { account2, account3, matchMakerV2, monsterApiV1 } = await deploy();
+      const { account2, account3, matchMakerV2, monsterApiV1, eventLogger } =
+        await deploy();
 
       await createMockMonsters(monsterApiV1);
 
@@ -409,6 +446,7 @@ describe("OCB", function () {
       // lets run a speed aura first to make player 2 faster than player 1
       await runAttacks(
         matchMakerV2,
+        eventLogger,
         account2,
         account3,
         matchId,
@@ -418,6 +456,7 @@ describe("OCB", function () {
 
       const attackResults = await runAttacks(
         matchMakerV2,
+        eventLogger,
         account2,
         account3,
         matchId,
@@ -426,15 +465,15 @@ describe("OCB", function () {
       );
 
       const firstStrikeEvent = attackResults.find(
-        (event) => event.name === "FirstStrike",
+        (event) => event.name === "LogEvent" && event.args[0] === "FirstStrike",
       );
 
-      expect(firstStrikeEvent.args[0]).to.equal(1);
-      expect(firstStrikeEvent.args[1]).to.equal(1);
+      expect(firstStrikeEvent.args[1][0]).to.equal("1");
     });
 
     it("should have issues fixed that occured in a battle on 2023-10-20", async () => {
-      const { account2, account3, monsterApiV1, matchMakerV2 } = await deploy();
+      const { account2, account3, monsterApiV1, matchMakerV2, eventLogger } =
+        await deploy();
 
       await monsterApiV1.createMonsterByName(10); // Fernopig
       await monsterApiV1.createMonsterByName(10); // Fernopig
@@ -470,6 +509,7 @@ describe("OCB", function () {
 
       await runAttacks(
         matchMakerV2,
+        eventLogger,
         account2,
         account3,
         matchId,
@@ -497,6 +537,7 @@ describe("OCB", function () {
 
       await runAttacks(
         matchMakerV2,
+        eventLogger,
         account2,
         account3,
         matchId,
@@ -538,6 +579,7 @@ describe("OCB", function () {
 
       await runAttacks(
         matchMakerV2,
+        eventLogger,
         account2,
         account3,
         matchId,
@@ -580,6 +622,7 @@ describe("OCB", function () {
 
       await runAttacks(
         matchMakerV2,
+        eventLogger,
         account2,
         account3,
         matchId,
@@ -608,5 +651,49 @@ describe("OCB", function () {
         2, // turns left
       );
     });
+  });
+
+  it("should store events", async () => {
+    const { account2, account3, matchMakerV2, monsterApiV1, eventLogger } =
+      await deploy();
+
+    await createMockMonsters(monsterApiV1);
+
+    await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
+    await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
+
+    const matchId = await matchMakerV2.matchCount();
+
+    const { damageOverTimeAttack, damageOverTimeEffect } =
+      await deployAttacks();
+
+    const GenericEventLoggerV1 = await ethers.getContractFactory(
+      "GenericEventLoggerV1",
+    );
+    const genericEventLoggerV1 = await GenericEventLoggerV1.deploy();
+
+    await damageOverTimeAttack.setEventLogger(
+      await genericEventLoggerV1.getAddress(),
+    );
+
+    await damageOverTimeEffect.setEventLogger(
+      await genericEventLoggerV1.getAddress(),
+    );
+
+    await runAttacks(
+      matchMakerV2,
+      eventLogger,
+      account2,
+      account3,
+      matchId,
+      await damageOverTimeAttack.getAddress(),
+      await damageOverTimeAttack.getAddress(),
+    );
+
+    const events = JSON.parse(
+      await genericEventLoggerV1.getEventLogs(UINT256_MAX, "1", "4", "0"),
+    );
+
+    expect(events.length).to.equal(4);
   });
 });

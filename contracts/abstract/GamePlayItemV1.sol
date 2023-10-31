@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.21;
 
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "../lib/RandomnessLibV1.sol";
-import { IEventEmitterV1 } from "../gameplay-v1/events/interfaces/IEventEmitterV1.sol";
+import { IGenericEventLoggerV1 } from "../interfaces/IGenericEventLoggerV1.sol";
 
 abstract contract GamePlayItem {
-    IEventEmitterV1 internal eventEmitter;
+    using Strings for uint256;
+    using Strings for uint16;
+
+    IGenericEventLoggerV1 internal eventLogger;
 
     function isRandomHit(
         uint256 seed,
@@ -15,27 +19,31 @@ abstract contract GamePlayItem {
         return RandomnessLibV1.isRandomHit(seed, salt, chance);
     }
 
-    function setEventEmitter(IEventEmitterV1 _eventEmitter) external {
-        eventEmitter = _eventEmitter;
+    function setEventLogger(IGenericEventLoggerV1 _eventLogger) external {
+        eventLogger = _eventLogger;
     }
 
     function emitBattleLogDamage(
         uint256 attacker,
         uint256 defender,
         address move,
-        uint256 damage,
+        int16 damage,
         uint16 elementalEffectiveness,
         bool isCritical
     ) internal {
-        if (address(eventEmitter) == address(0)) return;
+        if (address(eventLogger) == address(0)) return;
 
-        eventEmitter.emitBattleLogDamage(
+        string[] memory data = new string[](5);
+        data[0] = defender.toString();
+        data[1] = Strings.toHexString(uint256(uint160(move)), 20);
+        data[2] = int16ToString(damage);
+        data[3] = elementalEffectiveness.toString();
+        data[4] = isCritical ? "true" : "false";
+
+        eventLogger.logEventByTokenId(
             attacker,
-            defender,
-            move,
-            damage,
-            elementalEffectiveness,
-            isCritical
+            "Damage",
+            data
         );
     }
 
@@ -44,12 +52,20 @@ abstract contract GamePlayItem {
         address statusEffect,
         uint256 extraData
     ) internal {
-        if (address(eventEmitter) == address(0)) return;
+        if (address(eventLogger) == address(0)) return;
 
-        eventEmitter.emitBattleLogStatusEffect(
+        string[] memory data = new string[](2);
+        data[0] = Strings.toHexString(uint256(uint160(statusEffect)), 20);
+        data[1] = extraData.toString();
+
+        eventLogger.logEventByTokenId(
             player,
-            statusEffect,
-            extraData
+            "StatusEffectExecuted",
+            data
         );
+    }
+
+    function int16ToString(int16 input) internal returns (string memory) {
+        return input < 0 ? string(abi.encodePacked("-", uint16(-input).toString())) : string(uint16(input).toString());
     }
 }

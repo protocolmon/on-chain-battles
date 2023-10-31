@@ -1,6 +1,11 @@
 import { ethers } from "hardhat";
 import chalk from "chalk";
-import { MonsterApiV1, MatchMakerV2, EventEmitterV1 } from "../typechain-types";
+import {
+  MonsterApiV1,
+  MatchMakerV2,
+  EventEmitterV1,
+  GenericEventLoggerV1,
+} from "../typechain-types";
 import {
   attacks,
   monsterIds,
@@ -38,6 +43,8 @@ let activeMonsterId: bigint = BigInt(0);
 let activeOpponentMonsterId: bigint = BigInt(0);
 
 let statusEffectsByMonsterId: Map<bigint, StatusEffect[]> = new Map();
+
+const GAS_LIMIT = 3_000_000;
 
 const logMonsterStatus = async (
   monsterId: bigint,
@@ -117,14 +124,14 @@ async function chooseAttack(
 
   logger.log(`Selected attack: ${selectedAttack}`);
   // @ts-ignore
-  const attackAddress = attacks[selectedAttack];
+  const attackAddress = attacks[Object.keys(attacks)[selectedAttack]];
   if (!attackAddress) {
     logger.log(chalk.redBright(`Attack ${selectedAttack} not found`));
   }
   const commit = await getCommitHash(attackAddress!);
   lastAttack = attackAddress!;
 
-  await matchMakerV2.commit(matchId, commit, { gasLimit: 1_000_000 });
+  await matchMakerV2.commit(matchId, commit, { gasLimit: GAS_LIMIT });
 }
 
 async function updateStatusEffectBoxes(isOpponent: boolean) {
@@ -172,203 +179,24 @@ async function setupEventListener(matchMakerV2: MatchMakerV2): Promise<bigint> {
     setInterval(() => {
       return new Promise(async (resolve) => {
         try {
-          if (!matchId) {
-            return;
-          }
-
           // query the current match from the matchmaker
           const [
-            [challenger, challengerFirstMonsterId, challengerSecondMonsterId],
-            [opponent, opponentFirstMonsterId, opponentSecondMonsterId],
+            _matchId,
+            [
+              [challenger, challengerFirstMonsterId, challengerSecondMonsterId],
+              [opponent, opponentFirstMonsterId, opponentSecondMonsterId],
+              _,
+              __,
+              ___,
+              ____,
+              rounds,
+            ],
             [],
             [],
-            _,
-            __,
-            rounds,
-          ] = await matchMakerV2.matches(matchId);
+          ] = await matchMakerV2.getMatchByUser(selfAddress);
 
-          for (const monsterId of [
-            challengerFirstMonsterId,
-            challengerSecondMonsterId,
-            opponentFirstMonsterId,
-            opponentSecondMonsterId,
-          ]) {
-            if (!statusEffectsByMonsterId.has(monsterId)) {
-              statusEffectsByMonsterId.set(monsterId, []);
-            }
-          }
-
-          if (
-            rounds > BigInt(currentRound) ||
-            (!firstAttackDone &&
-              activeMonsterId !== BigInt(0) &&
-              activeOpponentMonsterId !== BigInt(0))
-          ) {
-            currentRound = Number(rounds);
-            logger.log(`Round: ${currentRound}`);
-            firstAttackDone = true;
-
-            await chooseAttack(challenger, opponent, matchMakerV2);
-          }
-        } catch (e: any) {
-          logger.log(
-            chalk.redBright(`Error from choose attack modal: ${e.message}`),
-          );
-        }
-      });
-    }, 2000);
-
-    const eventEmitterV1 =
-      await getContractInstance<EventEmitterV1>("EventEmitterV1");
-
-    eventEmitterV1.on(
-      "BattleLogStatusEffect" as unknown as any,
-      async (monsterId: bigint, effect: string, extraData: bigint) => {
-        logger.log(
-          `Battle Log Status Effect Monster ID: ${monsterId} Effect: ${translateEffectByAddress(
-            effect,
-          )} Extra Data: ${extraData}`,
-        );
-      },
-    );
-
-    eventEmitterV1.on(
-      "BattleLogDamage" as unknown as any,
-      async (
-        attackerMonsterId: bigint,
-        defenderMonsterId: bigint,
-        move: string,
-        damage: bigint,
-        elementalEffectiveness: bigint,
-        isCritical: boolean,
-      ) => {
-        const elementalEffectivenessConverted =
-          parseInt(elementalEffectiveness.toString()) / 100;
-        logger.log(
-          `Battle Log Damage Attacker Monster ID: ${attackerMonsterId} Defender Monster ID: ${defenderMonsterId} Move: ${translateMoveByAddress(
-            move,
-          )} Damage: ${damage} Elemental Effectiveness: ${elementalEffectivenessConverted} Is Critical: ${isCritical}`,
-        );
-      },
-    );
-
-    matchMakerV2.on(
-      "GameOver" as unknown as any,
-      async (_matchId, winner, loser) => {
-        if (matchId === _matchId) {
-          isGameOver = true;
-          const isWinner = winner === selfAddress;
-
-          logger.log(
-            chalk.white[isWinner ? "bgGreenBright" : "bgRedBright"](
-              `Game over, ${isWinner ? "You" : "Opponent"} won!`,
-            ),
-          );
-          resolve(_matchId);
-        }
-      },
-    );
-
-    matchMakerV2.on(
-      "FirstStrike" as unknown as any,
-      async (_matchId, monsterId) => {
-        if (matchId === _matchId) {
-          // print info if you or opponent struck first
-          logger.log(
-            `${
-              monsterId == firstMonsterId ||
-              monsterId == secondOpponentMonsterId
-                ? "You"
-                : "Opponent"
-            } struck first`,
-          );
-        }
-      },
-    );
-
-    matchMakerV2.on(
-      "StatusEffectLog" as unknown as any,
-      async (monsterId, round, statusEffect, remainingTurns) => {
-        try {
-          const isOpponent =
-            monsterId != firstMonsterId && monsterId != secondMonsterId;
-
-          logger.log(
-            `Status Effect Log ${
-              isOpponent ? "Opponent" : "You"
-            } Monster ID: ${monsterId} Status Effect: ${translateEffectByAddress(
-              statusEffect,
-            )} Remaining Turns: ${remainingTurns}`,
-          );
-
-          statusEffectsByMonsterId.get(monsterId)!.push({
-            name: translateEffectByAddress(statusEffect),
-            remainingTurns: Number(remainingTurns),
-          });
-
-          updateStatusEffectBoxes(isOpponent);
-        } catch (e: any) {
-          logger.log(chalk.redBright(e.message));
-        }
-      },
-    );
-
-    matchMakerV2.on(
-      "MonsterStatusLog" as unknown as any,
-      async (monsterId, round, element, hp, attack, defense, speed) => {
-        if (
-          monsterId !== activeMonsterId &&
-          monsterId !== activeOpponentMonsterId
-        ) {
-          return;
-        }
-
-        if (firstAttackDone) {
-          logMonsterStatus(
-            monsterId,
-            round,
-            element,
-            hp,
-            attack,
-            defense,
-            speed,
-          );
-        }
-      },
-    );
-
-    matchMakerV2.on(
-      "MatchJoined" as any,
-      async (_matchId, challenger, opponent) => {
-        if (matchId) {
-          return;
-        }
-
-        if (typeof _matchId !== undefined) {
-          matchId = _matchId;
-
-          const [
-            [challenger, challengerFirstMonsterId, challengerSecondMonsterId],
-            [opponent, opponentFirstMonsterId, opponentSecondMonsterId],
-          ] = await matchMakerV2.matches(matchId);
-
-          // log challenger and opponent if both are non zero addresses
-          if (
-            challenger !== ethers.ZeroAddress &&
-            opponent !== ethers.ZeroAddress
-          ) {
-            // log challenger and oppponent and print self address
-            logger.log(
-              [
-                chalk.white(`Match: ${matchId}`),
-                chalk.white(`You: ${selfAddress} `),
-                chalk.white(
-                  `Opponent: ${
-                    challenger === selfAddress ? opponent : challenger
-                  }`,
-                ),
-              ].join(" "),
-            );
+          if (!matchId) {
+            matchId = _matchId;
 
             if (challenger === selfAddress) {
               firstMonsterId = challengerFirstMonsterId;
@@ -404,6 +232,173 @@ async function setupEventListener(matchMakerV2: MatchMakerV2): Promise<bigint> {
                 defense,
                 speed,
               );
+            }
+          }
+
+          for (const monsterId of [
+            challengerFirstMonsterId,
+            challengerSecondMonsterId,
+            opponentFirstMonsterId,
+            opponentSecondMonsterId,
+          ]) {
+            if (!statusEffectsByMonsterId.has(monsterId)) {
+              statusEffectsByMonsterId.set(monsterId, []);
+            }
+          }
+
+          if (
+            rounds > BigInt(currentRound) ||
+            (!firstAttackDone &&
+              activeMonsterId !== BigInt(0) &&
+              activeOpponentMonsterId !== BigInt(0))
+          ) {
+            currentRound = Number(rounds);
+            logger.log(`Round: ${currentRound}`);
+            firstAttackDone = true;
+
+            await chooseAttack(challenger, opponent, matchMakerV2);
+          }
+        } catch (e: any) {
+          logger.log(
+            chalk.redBright(`Error from choose attack modal: ${e.message}`),
+          );
+        }
+      });
+    }, 2000);
+
+    const eventLogger = await getContractInstance<GenericEventLoggerV1>(
+      "GenericEventLoggerV1",
+    );
+    // @ts-ignore
+    eventLogger.runner.provider.pollingInterval = 5000;
+
+    eventLogger.on(
+      "TokenLogEvent" as unknown as any,
+      async (monsterId: bigint, name: string, data: string[]) => {
+        if (
+          monsterId !== firstMonsterId &&
+          monsterId !== secondMonsterId &&
+          monsterId !== firstOpponentMonsterId &&
+          monsterId !== secondOpponentMonsterId
+        ) {
+          return;
+        }
+
+        logger.log(
+          `Token Log Event Monster ID: ${monsterId} Name: ${name} Data: ${data}`,
+        );
+
+        if (name === "StatusEffect") {
+          try {
+            const isOpponent =
+              monsterId != firstMonsterId && monsterId != secondMonsterId;
+
+            logger.log(
+              `Status Effect Log ${
+                isOpponent ? "Opponent" : "You"
+              } Monster ID: ${monsterId} Status Effect: ${translateEffectByAddress(
+                data[0],
+              )} Remaining Turns: ${data[1]}`,
+            );
+
+            statusEffectsByMonsterId.get(monsterId)!.push({
+              name: translateEffectByAddress(data[0]),
+              remainingTurns: Number(data[1]),
+            });
+
+            updateStatusEffectBoxes(isOpponent);
+          } catch (e: any) {
+            logger.log(chalk.redBright(e.message));
+          }
+        } else if (name === "MonsterStatus") {
+          if (
+            monsterId !== activeMonsterId &&
+            monsterId !== activeOpponentMonsterId
+          ) {
+            return;
+          }
+
+          if (firstAttackDone) {
+            logMonsterStatus(
+              monsterId,
+              BigInt(data[0]),
+              BigInt(data[1]),
+              BigInt(data[2]),
+              BigInt(data[3]),
+              BigInt(data[4]),
+              BigInt(data[5]),
+            );
+          }
+        }
+      },
+    );
+
+    // eventLogger.on(
+    //   "BattleLogDamage" as unknown as any,
+    //   async (
+    //     attackerMonsterId: bigint,
+    //     defenderMonsterId: bigint,
+    //     move: string,
+    //     damage: bigint,
+    //     elementalEffectiveness: bigint,
+    //     isCritical: boolean,
+    //   ) => {
+    //     const elementalEffectivenessConverted =
+    //       parseInt(elementalEffectiveness.toString()) / 100;
+    //     logger.log(
+    //       `Battle Log Damage Attacker Monster ID: ${attackerMonsterId} Defender Monster ID: ${defenderMonsterId} Move: ${translateMoveByAddress(
+    //         move,
+    //       )} Damage: ${damage} Elemental Effectiveness: ${elementalEffectivenessConverted} Is Critical: ${isCritical}`,
+    //     );
+    //   },
+    // );
+
+    eventLogger.on(
+      "MatchLogEvent" as unknown as any,
+      async (matchId: bigint, name: string, data: string[]) => {
+        logger.log(
+          `Match Log Event Match ID: ${matchId} Name: ${name} Data: ${data.join(
+            ";",
+          )}`,
+        );
+
+        if (name === "Commit") {
+          logger.log(
+            `${
+              data[0] === selfAddress ? "You" : "Opponent"
+            } committed move with hash = ${data[1]}`,
+          );
+
+          // Track the players that have committed their moves
+          playersMovesCommitted.add(data[0]);
+
+          // If both players have committed their moves
+          if (playersMovesCommitted.size >= 2) {
+            logger.log(`Revealing moves...`);
+            playersMovesCommitted.clear();
+
+            // clear status effects
+            logger.log("Resetting status effects...");
+            statusEffectsByMonsterId.set(firstMonsterId, []);
+            statusEffectsByMonsterId.set(secondMonsterId, []);
+            statusEffectsByMonsterId.set(firstOpponentMonsterId, []);
+            statusEffectsByMonsterId.set(secondOpponentMonsterId, []);
+
+            try {
+              const matchMakerV2Fresh =
+                await getContractInstance<MatchMakerV2>("MatchMakerV2");
+              const tx = await matchMakerV2Fresh.reveal(
+                matchId,
+                lastAttack,
+                ethers.encodeBytes32String("secret"),
+                {
+                  gasLimit: GAS_LIMIT,
+                },
+              );
+              logger.log(`Reveal tx was ${tx.hash}`);
+              await tx.wait();
+            } catch (err: any) {
+              logger.log(chalk.redBright(err.message));
             }
           }
         }
@@ -453,7 +448,7 @@ async function runMatch() {
             lastAttack,
             ethers.encodeBytes32String("secret"),
             {
-              gasLimit: 1000000,
+              gasLimit: GAS_LIMIT,
             },
           );
           logger.log(`Reveal tx was ${tx.hash}`);
@@ -461,21 +456,6 @@ async function runMatch() {
         } catch (err: any) {
           logger.log(chalk.redBright(err.message));
         }
-      }
-    },
-  );
-
-  matchMakerV2.on(
-    "MoveRevealed" as unknown as any,
-    async (matchId, player, move) => {
-      try {
-        logger.log(
-          `${
-            player === selfAddress ? "You" : "Opponent"
-          } revealed move ${translateMoveByAddress(move)}`,
-        );
-      } catch (e: any) {
-        logger.log(chalk.redBright(e.message));
       }
     },
   );
@@ -490,17 +470,20 @@ async function startMatchmaking(selectedMonsters: string[]) {
     logger.log(`Waiting for another player...`);
   }
 
-  const monsterApiV1 = await getContractInstance<MonsterApiV1>("MonsterApiV1");
-  firstMonsterId = await createMonster(monsterApiV1, selectedMonsters[0]);
-  secondMonsterId = await createMonster(monsterApiV1, selectedMonsters[1]);
-
-  logger.log(
-    `Submitting monster ${firstMonsterId} and ${secondMonsterId} to matchmaking...`,
-  );
-  const tx = await matchMakerV2.join(0, firstMonsterId, secondMonsterId, {
-    gasLimit: 1_000_000,
-  });
-  const receipt = await tx.wait();
+  logger.log(`Joining...`);
+  try {
+    const tx = await matchMakerV2.createAndJoin(
+      0,
+      selectedMonsters[0],
+      selectedMonsters[1],
+      {
+        gasLimit: GAS_LIMIT,
+      },
+    );
+    await tx.wait();
+  } catch (err: any) {
+    logger.log(chalk.redBright(err.message));
+  }
 }
 
 async function createMonster(api: MonsterApiV1, monsterName: string) {

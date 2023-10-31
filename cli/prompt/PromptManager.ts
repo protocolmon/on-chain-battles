@@ -149,13 +149,9 @@ class PromptManager {
 
       submitButton.on("press", () => {
         const selected: string[] = [];
-        this.buttonSet?.children.forEach((child) => {
+        this.buttonSet?.children.forEach((child, index) => {
           if ((child as any).checked) {
-            let content = (child as any).content.trim();
-            if (content.startsWith("[x]") || content.startsWith("(*)")) {
-              content = content.substring(4);
-            }
-            selected.push(content.trim());
+            selected.push(`${index}`);
           }
         });
 
