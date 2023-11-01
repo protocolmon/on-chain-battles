@@ -6,10 +6,17 @@ import "../../../abstract/MoveV1.sol";
 contract CleansingShieldMove is MoveV1 {
     function execute(
         IMoveV1.MoveInput memory input
-    ) external view returns (IMoveV1.MoveOutput memory) {
+    ) external returns (IMoveV1.MoveOutput memory) {
         input.attackerStatusEffects = MoveLibV1.removeStatusEffectsByGroup(
             input.attackerStatusEffects,
             IBaseStatusEffectV1.StatusEffectGroup.DEBUFF
+        );
+
+        logger.log(
+            "SE-",
+            address(this),
+            input.attacker.tokenId,
+            uint256(IBaseStatusEffectV1.StatusEffectGroup.DEBUFF)
         );
 
         return

@@ -188,7 +188,6 @@ contract MoveExecutorV1 is IMoveExecutorV1 {
         return IMoveV1(address(0));
     }
 
-    /// @dev Swaps the attacker and defender in the MoveIO struct
     function executeAndPrepareForNext(
         IMonsterV1.Monster memory attacker,
         IMoveV1 move,

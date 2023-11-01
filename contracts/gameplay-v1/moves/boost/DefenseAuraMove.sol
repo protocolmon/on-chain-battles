@@ -12,13 +12,20 @@ contract DefenseAuraMove is MoveV1 {
 
     function execute(
         MoveInput memory input
-    ) external view returns (MoveOutput memory) {
+    ) external returns (MoveOutput memory) {
         input.attackerStatusEffects = MoveLibV1.addStatusEffect(
             input.attackerStatusEffects,
             IBaseStatusEffectV1.StatusEffectWrapper(
                 defenseAuraEffect,
                 type(uint8).max
             )
+        );
+
+        logger.log(
+            "SE+",
+            address(defenseAuraEffect),
+            input.attacker.tokenId,
+            type(uint8).max
         );
 
         return

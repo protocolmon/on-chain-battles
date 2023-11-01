@@ -16,10 +16,10 @@ contract TailwindEffect is BaseMoveStatusEffectWithoutStorageV1 {
     ) external override returns (bool isHit) {
         isHit = isRandomHit(randomness, name(), 40);
 
-        emitBattleLogStatusEffect(
-            0,
+        logger.log(
+            "SEA",
             address(this),
-            isHit ? 1 : 0
+            isHit
         );
     }
 

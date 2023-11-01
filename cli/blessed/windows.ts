@@ -24,48 +24,12 @@ function createBox(options: any) {
   });
 }
 
-export const monsterStatusBox = createBox({
-  top: 0,
-  left: 0,
-  width: "50%",
-  height: "12%",
-  content: "Your monster status...",
-  style: { fg: "white", bg: "magenta" },
-});
-
-export const monsterStatusBoxOpponent = createBox({
-  top: "12%",
-  left: 0,
-  width: "50%",
-  height: "12%",
-  content: "Opponent monster status...",
-  style: { fg: "white", bg: "blue" },
-});
-
-export const statusEffectsBox = createBox({
-  top: 0,
-  left: "50%",
-  width: "50%",
-  height: "12%",
-  content: "No status effects",
-  style: { fg: "white", bg: "magenta" },
-});
-
-export const statusEffectsBoxOpponent = createBox({
-  top: "12%",
-  left: "50%",
-  width: "50%",
-  height: "12%",
-  content: "No status effects",
-  style: { fg: "white", bg: "blue" },
-});
-
 // Create a box for logs
 export const logBox = createBox({
-  top: "24%",
+  top: "0%",
   left: 0,
   width: "100%",
-  height: "50%",
+  height: "74%",
   input: true,
   keys: true,
 });

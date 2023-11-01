@@ -12,9 +12,10 @@ contract DefenseAuraEffect is BaseMonsterStatusEffectWithoutStorageV1 {
     ) external returns (IMonsterV1.Monster memory) {
         monster.defense += BOOST_VALUE;
 
-        emitBattleLogStatusEffect(
-            monster.tokenId,
+        logger.log(
+            "SEA",
             address(this),
+            monster.tokenId,
             BOOST_VALUE
         );
 

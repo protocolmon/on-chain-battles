@@ -15,9 +15,10 @@ contract DamageOverTimeEffect is BaseMonsterStatusEffectWithStorageV1 {
 
         monster.hp = monster.hp.sub(damage);
 
-        emitBattleLogStatusEffect(
-            monster.tokenId,
+        logger.log(
+            "SEA",
             address(this),
+            monster.tokenId,
             damage
         );
 

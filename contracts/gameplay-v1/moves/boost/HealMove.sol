@@ -11,13 +11,12 @@ contract HealMove is MoveWithStorageV1 {
         int16 heal = prevHeal == 0 ? int16(40) : int16(prevHeal) / 2;
         store[input.attacker.tokenId] = abi.encodePacked(heal);
 
-        emitBattleLogDamage(
+        logger.log(
+            "-DMG",
+            address(this),
             input.attacker.tokenId,
             input.defender.tokenId,
-            address(this),
-            -heal,
-            0,
-            false
+            uint256(uint16(heal))
         );
 
         return

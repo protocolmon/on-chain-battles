@@ -20,10 +20,11 @@ contract ConfusedEffect is BaseMoveStatusEffectWithoutStorageV1 {
             returnMove = IMoveV1(moveToConfusedMove[address(move)]);
         }
 
-        emitBattleLogStatusEffect(
-            0,
+        logger.log(
+            "SEA",
             address(this),
-            isHit ? 1 : 0
+            address(move),
+            isHit
         );
     }
 

@@ -7,6 +7,8 @@ import "../../lib/CriticalHit.sol";
 import "../../lib/ElementalEffectiveness.sol";
 
 contract WallBreakerMove is MoveV1 {
+    uint8 public constant CONFUSED_EFFECT_DURATION = 2;
+
     IBaseStatusEffectV1 public confusedEffect;
 
     constructor(IBaseStatusEffectV1 _confusedEffect) {
@@ -36,12 +38,26 @@ contract WallBreakerMove is MoveV1 {
                 IBaseStatusEffectV1.StatusEffectGroup.WALL
             );
 
+            logger.log(
+                "SE-",
+                address(this),
+                input.defender.tokenId,
+                uint256(IBaseStatusEffectV1.StatusEffectGroup.WALL)
+            );
+
             input.defenderStatusEffects = MoveLibV1.addStatusEffect(
                 input.defenderStatusEffects,
                 IBaseStatusEffectV1.StatusEffectWrapper(
                     confusedEffect,
-                    2
+                    CONFUSED_EFFECT_DURATION
                 )
+            );
+
+            logger.log(
+                "SE+",
+                address(confusedEffect),
+                input.defender.tokenId,
+                CONFUSED_EFFECT_DURATION
             );
         }
 
@@ -52,12 +68,13 @@ contract WallBreakerMove is MoveV1 {
             input.attackerStatusEffects
         );
 
-        emitBattleLogDamage(
+        logger.log(
+            "DMG",
+            address(this),
             input.attacker.tokenId,
             input.defender.tokenId,
-            address(this),
-            int16(damage),
-            elementalMultiplier,
+            uint256(damage),
+            uint256(elementalMultiplier),
             isCriticalHit
         );
 

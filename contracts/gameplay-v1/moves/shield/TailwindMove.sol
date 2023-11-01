@@ -4,6 +4,8 @@ pragma solidity ^0.8.21;
 import "../../../abstract/MoveV1.sol";
 
 contract TailwindMove is MoveV1 {
+    uint8 public constant TAILWIND_DURATION = 3;
+
     IBaseStatusEffectV1 public immutable tailwindEffect;
 
     constructor(IBaseStatusEffectV1 _tailwindEffect) {
@@ -12,12 +14,19 @@ contract TailwindMove is MoveV1 {
 
     function execute(
         IMoveV1.MoveInput memory input
-    ) external view returns (IMoveV1.MoveOutput memory) {
+    ) external returns (IMoveV1.MoveOutput memory) {
         input.attackerStatusEffects = MoveLibV1.addStatusEffect(
             // attacker is the executor of the elemental wall here
             input.attackerStatusEffects,
             // will count in current turn and next 2 turns
-            IBaseStatusEffectV1.StatusEffectWrapper(tailwindEffect, 3)
+            IBaseStatusEffectV1.StatusEffectWrapper(tailwindEffect, TAILWIND_DURATION)
+        );
+
+        logger.log(
+            "SE+",
+            address(tailwindEffect),
+            input.attacker.tokenId,
+            TAILWIND_DURATION
         );
 
         return

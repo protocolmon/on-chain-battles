@@ -34,6 +34,13 @@ contract PurgeBuffsMove is MoveV1 {
                 input.defenderStatusEffects,
                 IBaseStatusEffectV1.StatusEffectGroup.BUFF
             );
+
+            logger.log(
+                "SE-",
+                address(this),
+                input.defender.tokenId,
+                uint256(IBaseStatusEffectV1.StatusEffectGroup.BUFF)
+            );
         }
 
         // finally apply the potential critical hit after the damage over time effect
@@ -44,12 +51,13 @@ contract PurgeBuffsMove is MoveV1 {
             input.attackerStatusEffects
         );
 
-        emitBattleLogDamage(
+        logger.log(
+            "DMG",
+            address(this),
             input.attacker.tokenId,
             input.defender.tokenId,
-            address(this),
-            int16(damage),
-            elementalMultiplier,
+            uint256(damage),
+            uint256(elementalMultiplier),
             isCriticalHit
         );
 

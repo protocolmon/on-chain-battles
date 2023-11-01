@@ -37,16 +37,14 @@ async function main() {
   output.contracts.MonsterApiV1 = monsterApiV1Address;
   output.contracts.MoveExecutorV1 = moveExecutorV1Address;
 
-  const { address: genericEventLoggerV1 } = await deployContract(
-    "GenericEventLoggerV1",
-  );
+  const { address: eventLoggerV1 } = await deployContract("EventLoggerV1");
 
-  output.contracts.GenericEventLoggerV1 = genericEventLoggerV1;
+  output.contracts.EventLoggerV1 = eventLoggerV1;
 
   const { address: matchMakerV2Address } = await deployProxy("MatchMakerV2", [
     monsterApiV1Address,
     moveExecutorV1Address,
-    genericEventLoggerV1,
+    eventLoggerV1,
     86400, // 1 day in seconds
   ]);
 
@@ -183,13 +181,13 @@ async function main() {
   for (const key of Object.keys(output.attacks)) {
     console.log(`Setting event emitter for ${key}...`);
     const attackContract = await ethers.getContractAt(key, output.attacks[key]);
-    await attackContract.setEventLogger(genericEventLoggerV1);
+    await attackContract.setLogger(eventLoggerV1);
   }
 
   for (const key of Object.keys(output.effects)) {
     console.log(`Setting event emitter for ${key}...`);
     const effectContract = await ethers.getContractAt(key, output.effects[key]);
-    await effectContract.setEventLogger(genericEventLoggerV1);
+    await effectContract.setLogger(eventLoggerV1);
   }
 
   // Writing to a JSON file

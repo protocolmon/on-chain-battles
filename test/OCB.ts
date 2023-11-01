@@ -1,11 +1,8 @@
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
-import {
-  GenericEventLoggerV1,
-  MatchMakerV2,
-  MonsterApiV1,
-} from "../typechain-types";
+import { EventLoggerV1, MatchMakerV2, MonsterApiV1 } from "../typechain-types";
 import { Signer } from "ethers";
+import { decodeAbiParameters } from "viem";
 
 const ONE_MINUTE = 60;
 
@@ -17,10 +14,6 @@ const ELEMENTS = {
   NATURE: 5,
   TOXIC: 6,
 };
-
-const UINT256_MAX = BigInt(
-  "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-);
 
 const getCommitHash = (move: string, secret: string = "secret") =>
   ethers.solidityPackedKeccak256(
@@ -39,34 +32,33 @@ describe("OCB", function () {
     const MonsterApiV1 = await ethers.getContractFactory("MonsterApiV1");
     const monsterApiV1 = await MonsterApiV1.deploy();
 
-    const GenericEventLoggerV1 = await ethers.getContractFactory(
-      "GenericEventLoggerV1",
-    );
-    const genericEventLoggerV1 = await GenericEventLoggerV1.deploy();
+    const EventLoggerV1 = await ethers.getContractFactory("EventLoggerV1");
+    const eventLogger = await EventLoggerV1.deploy();
 
     const MatchMakerV2 = await ethers.getContractFactory("MatchMakerV2");
     const matchMakerV2 = await upgrades.deployProxy(MatchMakerV2, [
       await monsterApiV1.getAddress(),
       await moveExecutorV1.getAddress(),
-      await genericEventLoggerV1.getAddress(),
+      await eventLogger.getAddress(),
       ONE_MINUTE,
     ]);
 
     return {
       account2,
       account3,
-      eventLogger: genericEventLoggerV1,
+      eventLogger,
       matchMakerV2: matchMakerV2 as unknown as MatchMakerV2,
       monsterApiV1,
       moveExecutorV1,
     };
   }
 
-  async function deployAttacks() {
+  async function deployAttacks(logger: EventLoggerV1) {
     const DamageOverTimeEffect = await ethers.getContractFactory(
       "DamageOverTimeEffect",
     );
     const damageOverTimeEffect = await DamageOverTimeEffect.deploy();
+    await damageOverTimeEffect.setLogger(await logger.getAddress());
 
     const DamageOverTimeMove =
       await ethers.getContractFactory("DamageOverTimeMove");
@@ -74,45 +66,56 @@ describe("OCB", function () {
       await damageOverTimeEffect.getAddress(),
       100,
     );
+    await damageOverTimeMove.setLogger(await logger.getAddress());
 
     const FoggedEffect = await ethers.getContractFactory("FoggedEffect");
     const foggedEffect = await FoggedEffect.deploy();
+    await foggedEffect.setLogger(await logger.getAddress());
 
     const ControlMove = await ethers.getContractFactory("ControlMove");
     const controlMove = await ControlMove.deploy(
       await foggedEffect.getAddress(),
     );
+    await controlMove.setLogger(await logger.getAddress());
 
     const CloudCoverEffect =
       await ethers.getContractFactory("CloudCoverEffect");
     const cloudCoverEffect = await CloudCoverEffect.deploy(0);
+    await cloudCoverEffect.setLogger(await logger.getAddress());
 
     const CloudCoverMove = await ethers.getContractFactory("CloudCoverMove");
     const cloudCoverMove = await CloudCoverMove.deploy(
       await cloudCoverEffect.getAddress(),
     );
+    await cloudCoverMove.setLogger(await logger.getAddress());
 
     const SpeedAuraEffect = await ethers.getContractFactory("SpeedAuraEffect");
     const speedAuraEffect = await SpeedAuraEffect.deploy();
+    await speedAuraEffect.setLogger(await logger.getAddress());
 
     const SpeedAuraMove = await ethers.getContractFactory("SpeedAuraMove");
     const speedAuraMove = await SpeedAuraMove.deploy(
       await speedAuraEffect.getAddress(),
     );
+    await speedAuraMove.setLogger(await logger.getAddress());
 
     const healMove = await ethers.getContractFactory("HealMove");
     const HealMove = await healMove.deploy();
+    await HealMove.setLogger(await logger.getAddress());
 
     const PurgeBuffsMove = await ethers.getContractFactory("PurgeBuffsMove");
     const purgeBuffsMove = await PurgeBuffsMove.deploy(100);
+    await purgeBuffsMove.setLogger(await logger.getAddress());
 
     const ConfusedEffect = await ethers.getContractFactory("ConfusedEffect");
     const confusedEffect = await ConfusedEffect.deploy();
+    await confusedEffect.setLogger(await logger.getAddress());
 
     const WallBreakerMove = await ethers.getContractFactory("WallBreakerMove");
     const wallBreakerMove = await WallBreakerMove.deploy(
       await confusedEffect.getAddress(),
     );
+    await wallBreakerMove.setLogger(await logger.getAddress());
 
     const ElementalWallEffect = await ethers.getContractFactory(
       "ElementalWallEffect",
@@ -120,12 +123,14 @@ describe("OCB", function () {
     const elementalWallEffect = await ElementalWallEffect.deploy(
       await wallBreakerMove.getAddress(),
     );
+    await elementalWallEffect.setLogger(await logger.getAddress());
 
     const ElementalWallMove =
       await ethers.getContractFactory("ElementalWallMove");
     const elementalWallMove = await ElementalWallMove.deploy(
       await elementalWallEffect.getAddress(),
     );
+    await elementalWallMove.setLogger(await logger.getAddress());
 
     return {
       cloudCoverEffect: cloudCoverEffect,
@@ -177,7 +182,7 @@ describe("OCB", function () {
 
   async function commit(
     matchMakerV2: MatchMakerV2,
-    eventLogger: GenericEventLoggerV1,
+    eventLogger: EventLoggerV1,
     user: Signer,
     matchId: number | bigint,
     move: string,
@@ -193,7 +198,7 @@ describe("OCB", function () {
 
   async function reveal(
     matchMakerV2: MatchMakerV2,
-    eventLogger: GenericEventLoggerV1,
+    eventLogger: EventLoggerV1,
     user: Signer,
     matchId: number | bigint,
     move: string,
@@ -209,7 +214,7 @@ describe("OCB", function () {
 
   async function runAttacks(
     matchMakerV2: MatchMakerV2,
-    eventLogger: GenericEventLoggerV1,
+    eventLogger: EventLoggerV1,
     player1: Signer,
     player2: Signer,
     matchId: number | bigint,
@@ -260,7 +265,7 @@ describe("OCB", function () {
 
       expect(await matchMakerV2.matchCount()).to.equal(1);
 
-      const { speedAuraMove } = await deployAttacks();
+      const { speedAuraMove } = await deployAttacks(eventLogger);
 
       const matchId = 1;
 
@@ -299,7 +304,7 @@ describe("OCB", function () {
 
       expect(await matchMakerV2.matchCount()).to.equal(1);
 
-      const { healMove } = await deployAttacks();
+      const { healMove } = await deployAttacks(eventLogger);
 
       const matchId = 1;
 
@@ -338,7 +343,8 @@ describe("OCB", function () {
 
       expect(await matchMakerV2.matchCount()).to.equal(1);
 
-      const { cloudCoverMove, purgeBuffsMove } = await deployAttacks();
+      const { cloudCoverMove, purgeBuffsMove } =
+        await deployAttacks(eventLogger);
 
       const matchId = 1;
 
@@ -370,7 +376,7 @@ describe("OCB", function () {
 
       expect(await matchMakerV2.matchCount()).to.equal(1);
 
-      const { cloudCoverMove } = await deployAttacks();
+      const { cloudCoverMove } = await deployAttacks(eventLogger);
 
       const matchId = 1;
 
@@ -402,7 +408,7 @@ describe("OCB", function () {
 
       expect(await matchMakerV2.matchCount()).to.equal(1);
 
-      const { damageOverTimeAttack } = await deployAttacks();
+      const { damageOverTimeAttack } = await deployAttacks(eventLogger);
 
       const matchId = 1;
 
@@ -441,7 +447,7 @@ describe("OCB", function () {
       const matchId = await matchMakerV2.matchCount();
 
       const { healMove, damageOverTimeAttack, speedAuraMove, cloudCoverMove } =
-        await deployAttacks();
+        await deployAttacks(eventLogger);
 
       // lets run a speed aura first to make player 2 faster than player 1
       await runAttacks(
@@ -465,11 +471,16 @@ describe("OCB", function () {
       );
 
       const firstStrikeEvent = attackResults.find(
-        (event) =>
-          event.name === "MatchLogEvent" && event.args[1] === "FirstStrike",
+        (event) => event?.args[1] === "FST",
       );
 
-      expect(firstStrikeEvent.args[2][0]).to.equal("1");
+      const decodedArgs = decodeAbiParameters(
+        // @ts-ignore typescript seems to have some weird issue here (check https://viem.sh/docs/abi/decodeAbiParameters.html)
+        [{ type: "uint256" }],
+        firstStrikeEvent?.args[2],
+      );
+
+      expect(decodedArgs[0]).to.equal("1");
     });
 
     it("should have issues fixed that occured in a battle on 2023-10-20", async () => {
@@ -492,7 +503,7 @@ describe("OCB", function () {
         controlMove,
         elementalWallEffect,
         elementalWallMove,
-      } = await deployAttacks();
+      } = await deployAttacks(eventLogger);
 
       await cloudCoverEffect.setChance(100);
 
@@ -666,20 +677,7 @@ describe("OCB", function () {
     const matchId = await matchMakerV2.matchCount();
 
     const { damageOverTimeAttack, damageOverTimeEffect } =
-      await deployAttacks();
-
-    const GenericEventLoggerV1 = await ethers.getContractFactory(
-      "GenericEventLoggerV1",
-    );
-    const genericEventLoggerV1 = await GenericEventLoggerV1.deploy();
-
-    await damageOverTimeAttack.setEventLogger(
-      await genericEventLoggerV1.getAddress(),
-    );
-
-    await damageOverTimeEffect.setEventLogger(
-      await genericEventLoggerV1.getAddress(),
-    );
+      await deployAttacks(eventLogger);
 
     await runAttacks(
       matchMakerV2,
@@ -691,10 +689,8 @@ describe("OCB", function () {
       await damageOverTimeAttack.getAddress(),
     );
 
-    const events = JSON.parse(
-      await genericEventLoggerV1.getEventLogs(UINT256_MAX, ["1", "4"], "0"),
-    );
+    const events = await eventLogger.getLogs(matchId, BigInt(0));
 
-    expect(events.length).to.equal(4);
+    expect(events.length).to.equal(9);
   });
 });

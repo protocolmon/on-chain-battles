@@ -50,12 +50,13 @@ contract DamageOverTimeMove is MoveV1 {
             input.attackerStatusEffects
         );
 
-        emitBattleLogDamage(
+        logger.log(
+            "DMG",
+            address(this),
             input.attacker.tokenId,
             input.defender.tokenId,
-            address(this),
-            int16(damage),
-            elementalMultiplier,
+            uint256(damage),
+            uint256(elementalMultiplier),
             isCriticalHit
         );
 
