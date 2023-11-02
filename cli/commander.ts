@@ -13,6 +13,12 @@ import { getCommitHash } from "./utils/commit";
 import { getContractInstance } from "./utils/contracts";
 import { promptManager } from "./prompt/PromptManager";
 import { logger } from "./logger/Logger";
+import { decodeEvent } from "../src";
+
+// @ts-ignore It's ok to extend native types
+BigInt.prototype.toJSON = function () {
+  return this.toString();
+};
 
 type StatusEffect = {
   name: string;
@@ -211,14 +217,34 @@ async function setupEventListener(matchMakerV2: MatchMakerV2): Promise<bigint> {
 
     eventLogger.on(
       "LogEvent" as unknown as any,
-      async (_matchId: bigint, name: string, data: string[]) => {
+      async (
+        id: bigint,
+        _matchId: bigint,
+        name: bigint,
+        timestamp: bigint,
+        data: string[],
+      ) => {
         if (matchId !== _matchId) {
           return;
         }
 
-        logger.log(
-          `Token Log Event Match ID: ${matchId} Name: ${name} Data: ${data}`,
-        );
+        try {
+          // todo - yes this could be done cleaner typescript wise but not worth it here
+          const decodedEvent: any = decodeEvent(id, name, timestamp, data);
+          if (decodedEvent.statusEffect) {
+            decodedEvent.statusEffectName = translateEffectByAddress(
+              decodedEvent.statusEffect,
+            );
+          }
+
+          if (decodedEvent.move) {
+            decodedEvent.moveName = translateMoveByAddress(decodedEvent.move);
+          }
+
+          logger.log(JSON.stringify(decodedEvent, null, 2));
+        } catch (err) {
+          logger.log(chalk.redBright(err as string));
+        }
       },
     );
   });

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/BaseMoveStatusEffectWithoutStorageV1.sol";
+import { LogActions } from "../../lib/LogActions.sol";
 
 contract TailwindEffect is BaseMoveStatusEffectWithoutStorageV1 {
     function applyEffect(
@@ -17,7 +18,7 @@ contract TailwindEffect is BaseMoveStatusEffectWithoutStorageV1 {
         isHit = isRandomHit(randomness, name(), 40);
 
         logger.log(
-            "SEA",
+            uint256(LogActions.Action.ApplyOtherStatusEffect),
             address(this),
             isHit
         );

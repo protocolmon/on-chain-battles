@@ -15,6 +15,11 @@ import { IMoveStatusEffectV1 } from "./interfaces/IMoveStatusEffectV1.sol";
 import "./interfaces/IEventLoggerV1.sol";
 
 contract MatchMakerV2 is Initializable, OwnableUpgradeable {
+    uint256 public constant LOG_COMMIT = 1_000_000;
+    uint256 public constant LOG_REVEAL = 1_000_001;
+    uint256 public constant LOG_FIRST_STRIKER = 1_000_002;
+    uint256 public constant LOG_GAME_OVER = 1_000_003;
+
     using StringsLibV1 for address;
     using StringsLibV1 for bytes32;
 
@@ -222,7 +227,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         }
 
         logger.log(
-            "CMT",
+            LOG_COMMIT,
             msg.sender,
             _commit
         );
@@ -262,7 +267,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         relevantMove.move = IMoveV1(move);
 
         logger.log(
-            "RVL",
+            LOG_REVEAL,
             msg.sender,
             address(move)
         );
@@ -312,7 +317,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             storeStatusEffects(opponentMonster.tokenId, opponentOutputEffects);
 
             logger.log(
-                "FST",
+                LOG_FIRST_STRIKER,
                 firstStrikerId
             );
 
@@ -356,7 +361,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
                 _match.phase = Phase.GameOver;
 
                 logger.log(
-                    "GOR",
+                    LOG_GAME_OVER,
                     monsters[_match.challengerTeam.secondMonsterId].hp == 0
                         ? _match.opponentTeam.owner
                         : _match.challengerTeam.owner

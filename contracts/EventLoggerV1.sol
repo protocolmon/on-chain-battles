@@ -4,6 +4,7 @@ pragma solidity ^0.8.21;
 import "./interfaces/IEventLoggerV1.sol";
 
 contract EventLoggerV1 is IEventLoggerV1 {
+    uint256 private count;
     uint256 private currentMatchId;
 
     mapping(uint256 => Log[]) public logsByMatchId;
@@ -13,65 +14,66 @@ contract EventLoggerV1 is IEventLoggerV1 {
         _;
     }
 
-    function log(string memory name, uint256 val) external hasMatchId {
+    function log(uint256 action, uint256 val) external hasMatchId {
         bytes memory data = abi.encode(val);
-        _storeLog(name, data);
+        _storeLog(action, data);
     }
 
-    function log(string memory name, address addr) external hasMatchId {
+    function log(uint256 action, address addr) external hasMatchId {
         bytes memory data = abi.encode(addr);
-        _storeLog(name, data);
+        _storeLog(action, data);
     }
 
-    function log(string memory name, address addr, bool b) external hasMatchId {
+    function log(uint256 action, address addr, bool b) external hasMatchId {
         bytes memory data = abi.encode(addr, b);
-        _storeLog(name, data);
+        _storeLog(action, data);
     }
 
-    function log(string memory name, address addr, bytes32 b) external hasMatchId {
+    function log(uint256 action, address addr, bytes32 b) external hasMatchId {
         bytes memory data = abi.encode(addr, b);
-        _storeLog(name, data);
+        _storeLog(action, data);
     }
 
-    function log(string memory name, address addr1, address addr2, bool b) external hasMatchId {
+    function log(uint256 action, address addr1, address addr2, bool b) external hasMatchId {
         bytes memory data = abi.encode(addr1, addr2, b);
-        _storeLog(name, data);
+        _storeLog(action, data);
     }
 
-    function log(string memory name, address addr1, address addr2) external hasMatchId {
+    function log(uint256 action, address addr1, address addr2) external hasMatchId {
         bytes memory data = abi.encode(addr1, addr2);
-        _storeLog(name, data);
+        _storeLog(action, data);
     }
 
-    function log(string memory name, address addr, uint256 val1, uint256 val2) external hasMatchId {
+    function log(uint256 action, address addr, uint256 val1, uint256 val2) external hasMatchId {
         bytes memory data = abi.encode(addr, val1, val2);
-        _storeLog(name, data);
+        _storeLog(action, data);
     }
 
-    function log(string memory name, address addr, uint256 val1, uint256 val2, uint256 val3) external hasMatchId {
+    function log(uint256 action, address addr, uint256 val1, uint256 val2, uint256 val3) external hasMatchId {
         bytes memory data = abi.encode(addr, val1, val2, val3);
-        _storeLog(name, data);
+        _storeLog(action, data);
     }
 
-    function log(string memory name, address addr, uint256 val1, uint256 val2, uint256 val3, uint256 val4, bool b) external hasMatchId {
+    function log(uint256 action, address addr, uint256 val1, uint256 val2, uint256 val3, uint256 val4, bool b) external hasMatchId {
         bytes memory data = abi.encode(addr, val1, val2, val3, val4, b);
-        _storeLog(name, data);
+        _storeLog(action, data);
     }
 
     function setMatchId(uint256 matchId) external {
         currentMatchId = matchId;
     }
 
-    function _storeLog(string memory name, bytes memory data) internal {
+    function _storeLog(uint256 action, bytes memory data) internal {
         Log memory newLog = Log({
-            name: name,
+            id: count++,
+            action: action,
             data: data,
             timestamp: block.timestamp
         });
 
         logsByMatchId[currentMatchId].push(newLog);
 
-        emit LogEvent(currentMatchId, name, data);
+        emit LogEvent(count, currentMatchId, action, block.timestamp, data);
     }
 
     function getLogs(uint256 matchId, uint256 offset) external view returns (Log[] memory) {

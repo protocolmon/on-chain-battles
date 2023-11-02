@@ -2,6 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/MoveV1.sol";
+import { LogActions } from "../../lib/LogActions.sol";
 
 contract CleansingShieldMove is MoveV1 {
     function execute(
@@ -13,7 +14,7 @@ contract CleansingShieldMove is MoveV1 {
         );
 
         logger.log(
-            "SE-",
+            uint256(LogActions.Action.RemoveStatusEffectsByGroup),
             address(this),
             input.attacker.tokenId,
             uint256(IBaseStatusEffectV1.StatusEffectGroup.DEBUFF)

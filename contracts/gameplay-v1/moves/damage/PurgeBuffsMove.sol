@@ -5,6 +5,7 @@ import "../../../abstract/MoveV1.sol";
 import "../../lib/BaseDamage.sol";
 import "../../lib/CriticalHit.sol";
 import "../../lib/ElementalEffectiveness.sol";
+import { LogActions } from "../../lib/LogActions.sol";
 
 contract PurgeBuffsMove is MoveV1 {
     uint8 public immutable chance;
@@ -36,7 +37,7 @@ contract PurgeBuffsMove is MoveV1 {
             );
 
             logger.log(
-                "SE-",
+                uint256(LogActions.Action.RemoveStatusEffectsByGroup),
                 address(this),
                 input.defender.tokenId,
                 uint256(IBaseStatusEffectV1.StatusEffectGroup.BUFF)
@@ -52,7 +53,7 @@ contract PurgeBuffsMove is MoveV1 {
         );
 
         logger.log(
-            "DMG",
+            uint256(LogActions.Action.Damage),
             address(this),
             input.attacker.tokenId,
             input.defender.tokenId,

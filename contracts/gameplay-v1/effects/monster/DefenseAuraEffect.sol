@@ -2,6 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/BaseMonsterStatusEffectWithoutStorageV1.sol";
+import { LogActions } from "../../lib/LogActions.sol";
 
 contract DefenseAuraEffect is BaseMonsterStatusEffectWithoutStorageV1 {
     uint16 constant public BOOST_VALUE = 20;
@@ -13,7 +14,7 @@ contract DefenseAuraEffect is BaseMonsterStatusEffectWithoutStorageV1 {
         monster.defense += BOOST_VALUE;
 
         logger.log(
-            "SEA",
+            uint256(LogActions.Action.ApplyMonsterStatusEffect),
             address(this),
             monster.tokenId,
             BOOST_VALUE

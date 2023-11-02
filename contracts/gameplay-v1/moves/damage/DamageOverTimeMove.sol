@@ -5,8 +5,11 @@ import "../../../abstract/MoveV1.sol";
 import "../../lib/ElementalEffectiveness.sol";
 import "../../lib/CriticalHit.sol";
 import "../../lib/BaseDamage.sol";
+import { LogActions } from "../../lib/LogActions.sol";
 
 contract DamageOverTimeMove is MoveV1 {
+    uint8 constant public DAMAGE_OVER_TIME_DURATION = 3;
+
     IBaseStatusEffectV1 public damageOverTimeEffect;
     uint8 public chance;
 
@@ -38,7 +41,13 @@ contract DamageOverTimeMove is MoveV1 {
             );
             input.defenderStatusEffects = MoveLibV1.addStatusEffect(
                 input.defenderStatusEffects,
-                IBaseStatusEffectV1.StatusEffectWrapper(damageOverTimeEffect, 3)
+                IBaseStatusEffectV1.StatusEffectWrapper(damageOverTimeEffect, DAMAGE_OVER_TIME_DURATION)
+            );
+            logger.log(
+                uint256(LogActions.Action.AddStatusEffect),
+                address(damageOverTimeEffect),
+                input.defender.tokenId,
+                DAMAGE_OVER_TIME_DURATION
             );
         }
 
@@ -51,7 +60,7 @@ contract DamageOverTimeMove is MoveV1 {
         );
 
         logger.log(
-            "DMG",
+            uint256(LogActions.Action.Damage),
             address(this),
             input.attacker.tokenId,
             input.defender.tokenId,

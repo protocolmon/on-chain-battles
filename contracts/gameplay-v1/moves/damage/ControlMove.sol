@@ -5,8 +5,11 @@ import "../../../abstract/MoveV1.sol";
 import "../../lib/ElementalEffectiveness.sol";
 import "../../lib/CriticalHit.sol";
 import "../../lib/BaseDamage.sol";
+import { LogActions } from "../../lib/LogActions.sol";
 
 contract ControlMove is MoveV1 {
+    uint8 public constant FOGGED_DURATION = 3;
+
     IBaseStatusEffectV1 public foggedEffect;
 
     constructor(IBaseStatusEffectV1 _foggedEffect) {
@@ -33,7 +36,13 @@ contract ControlMove is MoveV1 {
         if (isRandomHit(input.randomness, "control", 80)) {
             input.defenderStatusEffects = MoveLibV1.addStatusEffect(
                 input.defenderStatusEffects,
-                IBaseStatusEffectV1.StatusEffectWrapper(foggedEffect, 3)
+                IBaseStatusEffectV1.StatusEffectWrapper(foggedEffect, FOGGED_DURATION)
+            );
+            logger.log(
+                uint256(LogActions.Action.AddStatusEffect),
+                address(foggedEffect),
+                input.defender.tokenId,
+                FOGGED_DURATION
             );
         }
 
@@ -46,7 +55,7 @@ contract ControlMove is MoveV1 {
         );
 
         logger.log(
-            "DMG",
+            uint256(LogActions.Action.Damage),
             address(this),
             input.attacker.tokenId,
             input.defender.tokenId,

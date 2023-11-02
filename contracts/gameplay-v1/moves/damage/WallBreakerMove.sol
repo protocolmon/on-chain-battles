@@ -5,6 +5,7 @@ import "../../../abstract/MoveV1.sol";
 import "../../lib/BaseDamage.sol";
 import "../../lib/CriticalHit.sol";
 import "../../lib/ElementalEffectiveness.sol";
+import { LogActions } from "../../lib/LogActions.sol";
 
 contract WallBreakerMove is MoveV1 {
     uint8 public constant CONFUSED_EFFECT_DURATION = 2;
@@ -39,7 +40,7 @@ contract WallBreakerMove is MoveV1 {
             );
 
             logger.log(
-                "SE-",
+                uint256(LogActions.Action.RemoveStatusEffectsByGroup),
                 address(this),
                 input.defender.tokenId,
                 uint256(IBaseStatusEffectV1.StatusEffectGroup.WALL)
@@ -54,7 +55,7 @@ contract WallBreakerMove is MoveV1 {
             );
 
             logger.log(
-                "SE+",
+                uint256(LogActions.Action.AddStatusEffect),
                 address(confusedEffect),
                 input.defender.tokenId,
                 CONFUSED_EFFECT_DURATION
@@ -69,7 +70,7 @@ contract WallBreakerMove is MoveV1 {
         );
 
         logger.log(
-            "DMG",
+            uint256(LogActions.Action.Damage),
             address(this),
             input.attacker.tokenId,
             input.defender.tokenId,

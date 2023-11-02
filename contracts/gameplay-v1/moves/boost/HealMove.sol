@@ -2,6 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/MoveWithStorageV1.sol";
+import { LogActions } from "../../lib/LogActions.sol";
 
 contract HealMove is MoveWithStorageV1 {
     function execute(
@@ -12,10 +13,9 @@ contract HealMove is MoveWithStorageV1 {
         store[input.attacker.tokenId] = abi.encodePacked(heal);
 
         logger.log(
-            "-DMG",
+            uint256(LogActions.Action.Heal),
             address(this),
             input.attacker.tokenId,
-            input.defender.tokenId,
             uint256(uint16(heal))
         );
 

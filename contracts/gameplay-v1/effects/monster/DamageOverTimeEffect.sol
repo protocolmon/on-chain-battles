@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 
 import "../../../lib/MathLibV1.sol";
 import "../../../abstract/BaseMonsterStatusEffectWithStorageV1.sol";
+import { LogActions } from "../../lib/LogActions.sol";
 
 contract DamageOverTimeEffect is BaseMonsterStatusEffectWithStorageV1 {
     using MathLibV1 for uint16;
@@ -16,7 +17,7 @@ contract DamageOverTimeEffect is BaseMonsterStatusEffectWithStorageV1 {
         monster.hp = monster.hp.sub(damage);
 
         logger.log(
-            "SEA",
+            uint256(LogActions.Action.ApplyMonsterStatusEffect),
             address(this),
             monster.tokenId,
             damage

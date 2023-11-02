@@ -2,6 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/MoveV1.sol";
+import { LogActions } from "../../lib/LogActions.sol";
 
 contract ElementalWallMove is MoveV1 {
     uint8 public constant ELEMENTAL_WALL_DURATION = 3;
@@ -23,7 +24,7 @@ contract ElementalWallMove is MoveV1 {
         );
 
         logger.log(
-            "SE+",
+            uint256(LogActions.Action.AddStatusEffect),
             address(elementalWallEffect),
             input.attacker.tokenId,
             ELEMENTAL_WALL_DURATION

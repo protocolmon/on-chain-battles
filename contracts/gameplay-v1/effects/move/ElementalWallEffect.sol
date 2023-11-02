@@ -2,6 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/BaseMoveStatusEffectWithoutStorageV1.sol";
+import { LogActions } from "../../lib/LogActions.sol";
 
 contract ElementalWallEffect is BaseMoveStatusEffectWithoutStorageV1 {
     IMoveV1 public immutable wallBreakerMove;
@@ -22,7 +23,7 @@ contract ElementalWallEffect is BaseMoveStatusEffectWithoutStorageV1 {
         }
 
         logger.log(
-            "SEA",
+            uint256(LogActions.Action.ApplyMoveStatusEffect),
             address(this),
             address(move),
             isHit

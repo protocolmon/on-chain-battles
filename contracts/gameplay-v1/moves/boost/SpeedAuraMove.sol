@@ -2,6 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/MoveV1.sol";
+import { LogActions } from "../../lib/LogActions.sol";
 
 contract SpeedAuraMove is MoveV1 {
     IBaseStatusEffectV1 public speedAuraEffect;
@@ -22,7 +23,7 @@ contract SpeedAuraMove is MoveV1 {
         );
 
         logger.log(
-            "SE+",
+            uint256(LogActions.Action.AddStatusEffect),
             address(speedAuraEffect),
             input.attacker.tokenId,
             type(uint8).max
