@@ -471,13 +471,13 @@ describe("OCB", function () {
       );
 
       const firstStrikeEvent = attackResults.find(
-        (event) => event?.args[1] === "FST",
+        (event) => event?.args[2] === BigInt(1_000_002),
       );
 
       const decodedArgs = decodeAbiParameters(
         // @ts-ignore typescript seems to have some weird issue here (check https://viem.sh/docs/abi/decodeAbiParameters.html)
         [{ type: "uint256" }],
-        firstStrikeEvent?.args[2],
+        firstStrikeEvent?.args[4],
       );
 
       expect(decodedArgs[0]).to.equal("1");
@@ -691,6 +691,6 @@ describe("OCB", function () {
 
     const events = await eventLogger.getLogs(matchId, BigInt(0));
 
-    expect(events.length).to.equal(9);
+    expect(events.length).to.equal(11);
   });
 });
