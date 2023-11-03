@@ -40,7 +40,7 @@ let activeOpponentMonsterId: bigint = BigInt(0);
 let statusEffectsByMonsterId: Map<bigint, StatusEffect[]> = new Map();
 
 const GAS_LIMIT = 3_000_000;
-const MODE = 2;
+const MODE = 1;
 
 const logMonsterStatus = async (
   monsterId: bigint,
@@ -113,8 +113,8 @@ async function setupEventListener(matchMakerV2: MatchMakerV2): Promise<bigint> {
           const [
             _matchId,
             [
-              [challenger, challengerFirstMonsterId, challengerSecondMonsterId],
-              [opponent, opponentFirstMonsterId, opponentSecondMonsterId],
+              [challenger, challengerMonster1, challengerMonster2],
+              [opponent, opponentMonster1, opponentMonster2],
               _,
               __,
               phase,
@@ -129,26 +129,26 @@ async function setupEventListener(matchMakerV2: MatchMakerV2): Promise<bigint> {
             matchId = _matchId;
 
             if (challenger === selfAddress) {
-              firstMonsterId = challengerFirstMonsterId;
-              secondMonsterId = challengerSecondMonsterId;
-              activeMonsterId = challengerFirstMonsterId;
-              activeOpponentMonsterId = opponentFirstMonsterId;
-              firstOpponentMonsterId = opponentFirstMonsterId;
-              secondOpponentMonsterId = opponentSecondMonsterId;
+              firstMonsterId = challengerMonster1;
+              secondMonsterId = challengerMonster2;
+              activeMonsterId = challengerMonster1;
+              activeOpponentMonsterId = opponentMonster1;
+              firstOpponentMonsterId = opponentMonster1;
+              secondOpponentMonsterId = opponentMonster2;
             } else {
-              firstMonsterId = opponentFirstMonsterId;
-              secondMonsterId = opponentSecondMonsterId;
-              activeMonsterId = opponentFirstMonsterId;
-              activeOpponentMonsterId = challengerFirstMonsterId;
-              firstOpponentMonsterId = challengerFirstMonsterId;
-              secondOpponentMonsterId = challengerSecondMonsterId;
+              firstMonsterId = opponentMonster1;
+              secondMonsterId = opponentMonster2;
+              activeMonsterId = opponentMonster1;
+              activeOpponentMonsterId = challengerMonster1;
+              firstOpponentMonsterId = challengerMonster1;
+              secondOpponentMonsterId = challengerMonster2;
             }
 
             for (const monsterId of [
-              challengerFirstMonsterId,
-              challengerSecondMonsterId,
-              opponentFirstMonsterId,
-              opponentSecondMonsterId,
+              challengerMonster1,
+              challengerMonster2,
+              opponentMonster1,
+              opponentMonster2,
             ]) {
               const [tokenId, element, hp, attack, defense, speed] =
                 await matchMakerV2.monsters(monsterId);
@@ -180,10 +180,10 @@ async function setupEventListener(matchMakerV2: MatchMakerV2): Promise<bigint> {
           }
 
           for (const monsterId of [
-            challengerFirstMonsterId,
-            challengerSecondMonsterId,
-            opponentFirstMonsterId,
-            opponentSecondMonsterId,
+            challengerMonster1,
+            challengerMonster2,
+            opponentMonster1,
+            opponentMonster2,
           ]) {
             if (!statusEffectsByMonsterId.has(monsterId)) {
               statusEffectsByMonsterId.set(monsterId, []);

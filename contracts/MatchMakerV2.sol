@@ -58,10 +58,14 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     struct MatchView {
         uint256 id;
         Match _match;
-        IMonsterV1.Monster challengerFirstMonster;
-        IMonsterV1.Monster challengerSecondMonster;
-        IMonsterV1.Monster opponentFirstMonster;
-        IMonsterV1.Monster opponentSecondMonster;
+        IMonsterV1.Monster challengerMonster1;
+        IMonsterV1.Monster challengerMonster2;
+        IMonsterV1.Monster opponentMonster1;
+        IMonsterV1.Monster opponentMonster2;
+        IBaseStatusEffectV1.StatusEffectWrapper[] challengerStatusEffects1;
+        IBaseStatusEffectV1.StatusEffectWrapper[] challengerStatusEffects2;
+        IBaseStatusEffectV1.StatusEffectWrapper[] opponentStatusEffects1;
+        IBaseStatusEffectV1.StatusEffectWrapper[] opponentStatusEffects2;
         address eventLogger;
     }
 
@@ -482,6 +486,10 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
                 monsters[_match.challengerTeam.secondMonsterId],
                 monsters[_match.opponentTeam.firstMonsterId],
                 monsters[_match.opponentTeam.secondMonsterId],
+                getStatusEffectsArray(_match.challengerTeam.firstMonsterId),
+                getStatusEffectsArray(_match.challengerTeam.secondMonsterId),
+                getStatusEffectsArray(_match.opponentTeam.firstMonsterId),
+                getStatusEffectsArray(_match.opponentTeam.secondMonsterId),
                 address(logger)
             );
     }

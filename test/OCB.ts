@@ -693,4 +693,31 @@ describe("OCB", function () {
 
     expect(events.length).to.equal(11);
   });
+
+  it("should return active status effects in the MatchView", async () => {
+    const { account2, account3, matchMakerV2, monsterApiV1, eventLogger } =
+      await deploy();
+
+    await createMockMonsters(monsterApiV1);
+
+    await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
+    await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
+
+    const matchId = await matchMakerV2.matchCount();
+
+    const { cloudCoverMove } = await deployAttacks(eventLogger);
+
+    await runAttacks(
+      matchMakerV2,
+      eventLogger,
+      account2,
+      account3,
+      matchId,
+      await cloudCoverMove.getAddress(),
+      await cloudCoverMove.getAddress(),
+    );
+
+    const match = await matchMakerV2.getMatchByUser(account2.getAddress());
+    expect(match[0]).to.equal(matchId);
+  });
 });
