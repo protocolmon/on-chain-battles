@@ -77,7 +77,6 @@ contract EventLoggerV1 is IEventLoggerV1 {
     }
 
     function getLogs(uint256 matchId, uint256 offset) external view returns (Log[] memory) {
-        require(matchId > 0, "Invalid match id");
         if (offset >= logsByMatchId[matchId].length) {
             return new Log[](0); // Return an empty array if the offset is beyond the available logs
         }
