@@ -30,6 +30,9 @@ async function main() {
     await deployContract("ContractApiV1");
   output.contracts.ContractApiV1 = contractApiV1Address;
 
+  const { address: usernamesV1Address } = await deployContract("UsernamesV1");
+  output.contracts.UsernamesV1 = usernamesV1Address;
+
   const { address: monsterApiV1Address } = await deployContract("MonsterApiV1");
   const { address: moveExecutorV1Address } =
     await deployContract("MoveExecutorV1");
