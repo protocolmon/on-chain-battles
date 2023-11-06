@@ -2,8 +2,9 @@
 pragma solidity ^0.8.21;
 
 import "./lib/MathLibV1.sol";
-import { IMoveV1 } from "./interfaces/IMoveV1.sol";
+import { IEventLoggerV1 } from "./interfaces/IEventLoggerV1.sol";
 import { IMonsterV1 } from "./interfaces/IMonsterV1.sol";
+import { IMoveV1 } from "./interfaces/IMoveV1.sol";
 import { IMoveExecutorV1 } from "./interfaces/IMoveExecutorV1.sol";
 import { IBaseStatusEffectV1 } from "./interfaces/IBaseStatusEffectV1.sol";
 import { IMonsterStatusEffectV1 } from "./interfaces/IMonsterStatusEffectV1.sol";
@@ -17,17 +18,19 @@ contract MoveExecutorV1 is IMoveExecutorV1 {
         IMonsterV1.Monster monster;
         IMoveV1 move;
         IBaseStatusEffectV1.StatusEffectWrapper[] statusEffects;
+        address player;
     }
 
     function executeMoves(
         IMonsterV1.Monster memory challenger,
         IMonsterV1.Monster memory opponent,
-        IMoveV1 challengerMove,
-        IMoveV1 opponentMove,
+        WrappedMove memory challengerMove,
+        WrappedMove memory opponentMove,
         IBaseStatusEffectV1.StatusEffectWrapper[]
             memory challengerStatusEffects,
         IBaseStatusEffectV1.StatusEffectWrapper[] memory opponentStatusEffects,
-        uint256 randomness
+        uint256 randomness,
+        IEventLoggerV1 eventLogger
     )
         external
         returns (
@@ -40,13 +43,15 @@ contract MoveExecutorV1 is IMoveExecutorV1 {
     {
         MonsterData memory attacker = MonsterData(
             challenger,
-            challengerMove,
-            challengerStatusEffects
+            challengerMove.move,
+            challengerStatusEffects,
+            challengerMove.player
         );
         MonsterData memory defender = MonsterData(
             opponent,
-            opponentMove,
-            opponentStatusEffects
+            opponentMove.move,
+            opponentStatusEffects,
+            opponentMove.player
         );
 
         // Apply PreMove status effects
@@ -79,6 +84,7 @@ contract MoveExecutorV1 is IMoveExecutorV1 {
         }
 
         firstStrikerId = attacker.monster.tokenId;
+        eventLogger.setCurrentMoveExecutor(attacker.player);
 
         // Execute moves in order
         IMoveV1.MoveInput memory firstMoveInput = IMoveV1.MoveInput(
@@ -93,6 +99,8 @@ contract MoveExecutorV1 is IMoveExecutorV1 {
             attacker.move,
             firstMoveInput
         );
+
+        eventLogger.setCurrentMoveExecutor(defender.player);
         IMoveV1.MoveInput memory finalOutcome = executeAndPrepareForNext(
             defender.monster,
             defender.move,
@@ -118,6 +126,8 @@ contract MoveExecutorV1 is IMoveExecutorV1 {
             finalOutcome.defenderStatusEffects,
             randomness
         );
+
+        eventLogger.setCurrentMoveExecutor(address(0));
 
         return (
             applyMonsterStatusEffects(

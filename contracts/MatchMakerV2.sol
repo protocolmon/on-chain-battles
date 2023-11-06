@@ -304,11 +304,12 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             ) = moveExecutor.executeMoves(
                 monsters[_match.currentChallengerMove.monsterId],
                 monsters[_match.currentOpponentMove.monsterId],
-                _match.currentChallengerMove.move,
-                _match.currentOpponentMove.move,
+                IMoveExecutorV1.WrappedMove(_match.currentChallengerMove.move, _match.challengerTeam.owner),
+                IMoveExecutorV1.WrappedMove(_match.currentOpponentMove.move, _match.opponentTeam.owner),
                 challengerInputEffects,
                 opponentInputEffects,
-                uint256(blockhash(block.number - 1)) // using pseudo-randomness for first version here
+                uint256(blockhash(block.number - 1)), // using pseudo-randomness for first version here
+                logger
             );
             monsters[challengerMonster.tokenId] = challengerMonster;
             monsters[opponentMonster.tokenId] = opponentMonster;

@@ -6,6 +6,7 @@ import "./interfaces/IEventLoggerV1.sol";
 contract EventLoggerV1 is IEventLoggerV1 {
     uint256 private count;
     uint256 private currentMatchId;
+    address private currentMoveExecutor;
 
     mapping(uint256 => Log[]) public logsByMatchId;
 
@@ -59,6 +60,10 @@ contract EventLoggerV1 is IEventLoggerV1 {
         _storeLog(action, data);
     }
 
+    function setCurrentMoveExecutor(address player) external {
+        currentMoveExecutor = player;
+    }
+
     function setMatchId(uint256 matchId) external {
         currentMatchId = matchId;
     }
@@ -68,12 +73,13 @@ contract EventLoggerV1 is IEventLoggerV1 {
             id: count++,
             action: action,
             data: data,
-            timestamp: block.timestamp
+            timestamp: block.timestamp,
+            player: currentMoveExecutor
         });
 
         logsByMatchId[currentMatchId].push(newLog);
 
-        emit LogEvent(count, currentMatchId, action, block.timestamp, data);
+        emit LogEvent(count, currentMatchId, action, block.timestamp, data, currentMoveExecutor);
     }
 
     function getLogs(uint256 matchId, uint256 offset) external view returns (Log[] memory) {
