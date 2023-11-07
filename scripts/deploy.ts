@@ -26,6 +26,8 @@ async function main() {
     effects: {},
   };
 
+  const [deployer] = await ethers.getSigners();
+
   const { address: contractApiV1Address } =
     await deployContract("ContractApiV1");
   output.contracts.ContractApiV1 = contractApiV1Address;
@@ -34,8 +36,10 @@ async function main() {
   output.contracts.UsernamesV1 = usernamesV1Address;
 
   const { address: monsterApiV1Address } = await deployContract("MonsterApiV1");
-  const { address: moveExecutorV1Address } =
-    await deployContract("MoveExecutorV1");
+  const { address: moveExecutorV1Address } = await deployContract(
+    "MoveExecutorV1",
+    [await deployer.getAddress()],
+  );
 
   output.contracts.MonsterApiV1 = monsterApiV1Address;
   output.contracts.MoveExecutorV1 = moveExecutorV1Address;
@@ -50,6 +54,16 @@ async function main() {
     eventLoggerV1,
     86400, // 1 day in seconds
   ]);
+
+  console.log(`Permitting match maker to use move executor`);
+  const moveExecutorV1 = await ethers.getContractAt(
+    "MoveExecutorV1",
+    moveExecutorV1Address,
+  );
+  await moveExecutorV1.grantRole(
+    await moveExecutorV1.PERMITTED_ROLE(),
+    matchMakerV2Address,
+  );
 
   output.contracts.MatchMakerV2 = matchMakerV2Address;
 

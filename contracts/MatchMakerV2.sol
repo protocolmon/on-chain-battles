@@ -17,7 +17,7 @@ import "./interfaces/IEventLoggerV1.sol";
 contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     uint256 public constant LOG_COMMIT = 1_000_000;
     uint256 public constant LOG_REVEAL = 1_000_001;
-    uint256 public constant LOG_FIRST_STRIKER = 1_000_002;
+    // OLD EVENT WAS HERE, THAT'S WHY THE LOG ID 1_000_002 IS MISSING
     uint256 public constant LOG_GAME_OVER = 1_000_003;
 
     using StringsLibV1 for address;
@@ -294,18 +294,18 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
                 memory challengerOutputEffects;
             IBaseStatusEffectV1.StatusEffectWrapper[]
                 memory opponentOutputEffects;
-            uint256 firstStrikerId;
             (
                 challengerMonster,
                 opponentMonster,
                 challengerOutputEffects,
-                opponentOutputEffects,
-                firstStrikerId
+                opponentOutputEffects
             ) = moveExecutor.executeMoves(
                 monsters[_match.currentChallengerMove.monsterId],
                 monsters[_match.currentOpponentMove.monsterId],
-                IMoveExecutorV1.WrappedMove(_match.currentChallengerMove.move, _match.challengerTeam.owner),
-                IMoveExecutorV1.WrappedMove(_match.currentOpponentMove.move, _match.opponentTeam.owner),
+                IMoveExecutorV1.WrappedMoves(
+                    IMoveExecutorV1.WrappedMove(_match.currentChallengerMove.move, _match.challengerTeam.owner),
+                    IMoveExecutorV1.WrappedMove(_match.currentOpponentMove.move, _match.opponentTeam.owner)
+                ),
                 challengerInputEffects,
                 opponentInputEffects,
                 uint256(blockhash(block.number - 1)), // using pseudo-randomness for first version here
@@ -320,11 +320,6 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
 
             _match.round++;
             storeStatusEffects(opponentMonster.tokenId, opponentOutputEffects);
-
-            logger.log(
-                LOG_FIRST_STRIKER,
-                firstStrikerId
-            );
 
             if (challengerMonster.hp == 0) {
                 transitStatusEffects(

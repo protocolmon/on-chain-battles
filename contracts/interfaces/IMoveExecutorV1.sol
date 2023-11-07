@@ -12,11 +12,15 @@ interface IMoveExecutorV1 {
         address player;
     }
 
+    struct WrappedMoves {
+        WrappedMove challenger;
+        WrappedMove opponent;
+    }
+
     function executeMoves(
         IMonsterV1.Monster memory challenger,
         IMonsterV1.Monster memory opponent,
-        WrappedMove memory attackerMove,
-        WrappedMove memory defenderMove,
+        WrappedMoves memory moves,
         IBaseStatusEffectV1.StatusEffectWrapper[]
             memory challengerStatusEffects,
         IBaseStatusEffectV1.StatusEffectWrapper[] memory opponentStatusEffects,
@@ -28,8 +32,6 @@ interface IMoveExecutorV1 {
             IMonsterV1.Monster memory,
             IMonsterV1.Monster memory,
             IBaseStatusEffectV1.StatusEffectWrapper[] memory,
-            IBaseStatusEffectV1.StatusEffectWrapper[] memory,
-            /// @dev The id of the monster that went first
-            uint256 firstStrikerId
+            IBaseStatusEffectV1.StatusEffectWrapper[] memory
         );
 }

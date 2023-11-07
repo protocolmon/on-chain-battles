@@ -27,7 +27,9 @@ describe("OCB", function () {
     const [owner, account2, account3] = signers;
 
     const MoveExecutorV1 = await ethers.getContractFactory("MoveExecutorV1");
-    const moveExecutorV1 = await MoveExecutorV1.deploy();
+    const moveExecutorV1 = await MoveExecutorV1.deploy(
+      await owner.getAddress(),
+    );
 
     const MonsterApiV1 = await ethers.getContractFactory("MonsterApiV1");
     const monsterApiV1 = await MonsterApiV1.deploy();
@@ -42,6 +44,11 @@ describe("OCB", function () {
       await eventLogger.getAddress(),
       ONE_MINUTE,
     ]);
+
+    await moveExecutorV1.grantRole(
+      await moveExecutorV1.PERMITTED_ROLE(),
+      await matchMakerV2.getAddress(),
+    );
 
     return {
       account2,
@@ -470,17 +477,15 @@ describe("OCB", function () {
         await damageOverTimeAttack.getAddress(),
       );
 
-      const firstStrikeEvent = attackResults.find(
-        (event) => event?.args[2] === BigInt(1_000_002),
+      const healEventIndex = attackResults.findIndex(
+        (event) => event?.args[2] === BigInt(6),
       );
 
-      const decodedArgs = decodeAbiParameters(
-        // @ts-ignore typescript seems to have some weird issue here (check https://viem.sh/docs/abi/decodeAbiParameters.html)
-        [{ type: "uint256" }],
-        firstStrikeEvent?.args[4],
+      const damageEventIndex = attackResults.findIndex(
+        (event) => event?.args[2] === BigInt(5),
       );
 
-      expect(decodedArgs[0]).to.equal("1");
+      expect(healEventIndex).to.be.lessThan(damageEventIndex);
     });
 
     it("should have issues fixed that occured in a battle on 2023-10-20", async () => {
@@ -691,7 +696,7 @@ describe("OCB", function () {
 
     const events = await eventLogger.getLogs(matchId, BigInt(0));
 
-    expect(events.length).to.equal(11);
+    expect(events.length).to.equal(10);
   });
 
   it("should return active status effects in the MatchView", async () => {

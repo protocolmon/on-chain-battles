@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.21;
 
-import "./lib/MathLibV1.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import { IEventLoggerV1 } from "./interfaces/IEventLoggerV1.sol";
 import { IMonsterV1 } from "./interfaces/IMonsterV1.sol";
 import { IMoveV1 } from "./interfaces/IMoveV1.sol";
@@ -9,9 +9,16 @@ import { IMoveExecutorV1 } from "./interfaces/IMoveExecutorV1.sol";
 import { IBaseStatusEffectV1 } from "./interfaces/IBaseStatusEffectV1.sol";
 import { IMonsterStatusEffectV1 } from "./interfaces/IMonsterStatusEffectV1.sol";
 import { IMoveStatusEffectV1 } from "./interfaces/IMoveStatusEffectV1.sol";
+import "./lib/MathLibV1.sol";
 
-contract MoveExecutorV1 is IMoveExecutorV1 {
+contract MoveExecutorV1 is IMoveExecutorV1, AccessControl {
     using MathLibV1 for uint16;
+
+    bytes32 public constant PERMITTED_ROLE = keccak256("PERMITTED_ROLE");
+
+    constructor(address defaultAdmin) {
+        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
+    }
 
     // Struct to hold monster and its associated data
     struct MonsterData {
@@ -24,8 +31,7 @@ contract MoveExecutorV1 is IMoveExecutorV1 {
     function executeMoves(
         IMonsterV1.Monster memory challenger,
         IMonsterV1.Monster memory opponent,
-        WrappedMove memory challengerMove,
-        WrappedMove memory opponentMove,
+        WrappedMoves memory moves,
         IBaseStatusEffectV1.StatusEffectWrapper[]
             memory challengerStatusEffects,
         IBaseStatusEffectV1.StatusEffectWrapper[] memory opponentStatusEffects,
@@ -33,25 +39,25 @@ contract MoveExecutorV1 is IMoveExecutorV1 {
         IEventLoggerV1 eventLogger
     )
         external
+        onlyRole(PERMITTED_ROLE)
         returns (
             IMonsterV1.Monster memory,
             IMonsterV1.Monster memory,
             IBaseStatusEffectV1.StatusEffectWrapper[] memory,
-            IBaseStatusEffectV1.StatusEffectWrapper[] memory,
-            uint256 firstStrikerId
+            IBaseStatusEffectV1.StatusEffectWrapper[] memory
         )
     {
         MonsterData memory attacker = MonsterData(
             challenger,
-            challengerMove.move,
+            moves.challenger.move,
             challengerStatusEffects,
-            challengerMove.player
+            moves.challenger.player
         );
         MonsterData memory defender = MonsterData(
             opponent,
-            opponentMove.move,
+            moves.opponent.move,
             opponentStatusEffects,
-            opponentMove.player
+            moves.opponent.player
         );
 
         // Apply PreMove status effects
@@ -83,7 +89,6 @@ contract MoveExecutorV1 is IMoveExecutorV1 {
             (attacker, defender) = (defender, attacker);
         }
 
-        firstStrikerId = attacker.monster.tokenId;
         eventLogger.setCurrentMoveExecutor(attacker.player);
 
         // Execute moves in order
@@ -143,10 +148,13 @@ contract MoveExecutorV1 is IMoveExecutorV1 {
                 IMonsterStatusEffectV1.Stage.POST_MOVE
             ),
             finalOutcome.attackerStatusEffects,
-            finalOutcome.defenderStatusEffects,
-            firstStrikerId
+            finalOutcome.defenderStatusEffects
         );
     }
+
+    /**************************************************************************
+     * INTERNAL FUNCTIONS
+     *************************************************************************/
 
     function doesChallengerStart(
         IMonsterV1.Monster memory challenger,
