@@ -267,8 +267,8 @@ describe("OCB", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
+      await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+      await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
       expect(await matchMakerV2.matchCount()).to.equal(1);
 
@@ -288,15 +288,15 @@ describe("OCB", function () {
 
       // boost should not be persisted
       const monster1 = await matchMakerV2.monsters(1);
-      expect(monster1.speed).to.equal(100);
+      expect(monster1.speed).to.equal(120);
 
-      const monster2 = await matchMakerV2.monsters(4);
-      expect(monster2.speed).to.equal(100);
+      const monster2 = await matchMakerV2.monsters(3);
+      expect(monster2.speed).to.equal(125);
 
       const statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
       expect(statusEffectsMonster1.length).to.equal(1);
 
-      const statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(4);
+      const statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
       expect(statusEffectsMonster2.length).to.equal(1);
     });
 
@@ -306,8 +306,8 @@ describe("OCB", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
+      await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+      await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
       expect(await matchMakerV2.matchCount()).to.equal(1);
 
@@ -327,15 +327,15 @@ describe("OCB", function () {
 
       // hp should not be higher than initial hp
       const monster1 = await matchMakerV2.monsters(1);
-      expect(monster1.hp).to.equal(100);
+      expect(monster1.hp).to.equal(120);
 
-      const monster2 = await matchMakerV2.monsters(4);
-      expect(monster2.hp).to.equal(100);
+      const monster2 = await matchMakerV2.monsters(3);
+      expect(monster2.hp).to.equal(125);
 
-      const statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(0);
+      const statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
       expect(statusEffectsMonster1.length).to.equal(0);
 
-      const statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(0);
+      const statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
       expect(statusEffectsMonster2.length).to.equal(0);
     });
 
@@ -345,8 +345,8 @@ describe("OCB", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
+      await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+      await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
       expect(await matchMakerV2.matchCount()).to.equal(1);
 
@@ -378,8 +378,8 @@ describe("OCB", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
+      await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+      await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
       expect(await matchMakerV2.matchCount()).to.equal(1);
 
@@ -400,7 +400,7 @@ describe("OCB", function () {
       const statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
       expect(statusEffectsMonster1.length).to.equal(1);
 
-      const statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(4);
+      const statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
       expect(statusEffectsMonster2.length).to.equal(1);
     });
 
@@ -410,8 +410,8 @@ describe("OCB", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
+      await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+      await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
       expect(await matchMakerV2.matchCount()).to.equal(1);
 
@@ -448,8 +448,8 @@ describe("OCB", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
+      await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+      await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
       const matchId = await matchMakerV2.matchCount();
 
@@ -492,11 +492,6 @@ describe("OCB", function () {
       const { account2, account3, monsterApiV1, matchMakerV2, eventLogger } =
         await deploy();
 
-      await monsterApiV1.createMonsterByName(10); // Fernopig
-      await monsterApiV1.createMonsterByName(10); // Fernopig
-      await monsterApiV1.createMonsterByName(6); // Wavepaw
-      await monsterApiV1.createMonsterByName(6); // Wavepaw
-
       const {
         cloudCoverEffect,
         purgeBuffsMove,
@@ -512,11 +507,12 @@ describe("OCB", function () {
 
       await cloudCoverEffect.setChance(100);
 
-      await matchMakerV2.connect(account2).join(0, "1", "2"); // join with fire and water
-      await matchMakerV2.connect(account3).join(0, "3", "4"); // join with water and nature
+      await matchMakerV2.connect(account2).createAndJoin(0, "10", "6"); // Fernopig + Wavepaw
+      await matchMakerV2.connect(account3).createAndJoin(0, "6", "10"); // Fernopig + Wavepaw
 
       let [, , monster1Hp, , , speed1] = await matchMakerV2.monsters(1);
       let [, , monster2Hp, , , speed2] = await matchMakerV2.monsters(3);
+
       expect(monster1Hp).to.equal(120);
       expect(monster2Hp).to.equal(125);
       expect(speed1).to.equal(140);
@@ -676,8 +672,8 @@ describe("OCB", function () {
 
     await createMockMonsters(monsterApiV1);
 
-    await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
-    await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
+    await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+    await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
     const matchId = await matchMakerV2.matchCount();
 
@@ -705,8 +701,8 @@ describe("OCB", function () {
 
     await createMockMonsters(monsterApiV1);
 
-    await matchMakerV2.connect(account2).join(0, "1", "3"); // join with fire and water
-    await matchMakerV2.connect(account3).join(0, "4", "5"); // join with water and nature
+    await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+    await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
     const matchId = await matchMakerV2.matchCount();
 

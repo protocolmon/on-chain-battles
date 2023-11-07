@@ -99,6 +99,15 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         uint8 remainingTurns
     );
 
+    modifier isInMatch(uint256 matchId) {
+        require(
+            matches[matchId].challengerTeam.owner == msg.sender ||
+                matches[matchId].opponentTeam.owner == msg.sender,
+            "MatchMakerV2: not your match"
+        );
+        _;
+    }
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -131,38 +140,6 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         join(mode, firstMonsterTokenId, secondMonsterTokenId);
     }
 
-    function join(uint256 mode, uint256 firstMonsterId, uint256 secondMonsterId) public {
-        require(accountToMatch[msg.sender] == 0, "MatchMakerV2: already joined");
-
-        monsters[firstMonsterId] = monsterApi.getMonster(firstMonsterId);
-        monsters[secondMonsterId] = monsterApi.getMonster(secondMonsterId);
-
-        if (queuedTeams[mode].firstMonsterId == 0) {
-            queuedTeams[mode] = Team(msg.sender, firstMonsterId, secondMonsterId);
-            return;
-        }
-
-        require(
-            queuedTeams[mode].owner != msg.sender,
-            "MatchMakerV2: cannot play against yourself"
-        );
-
-        matches[++matchCount] = Match(
-            queuedTeams[mode],
-            Team(msg.sender, firstMonsterId, secondMonsterId),
-            Move(0, IMoveV1(address(0)), 0),
-            Move(0, IMoveV1(address(0)), 0),
-            Phase.Commit,
-            block.timestamp + timeout,
-            0
-        );
-
-        accountToMatch[queuedTeams[mode].owner] = matchCount;
-        accountToMatch[msg.sender] = matchCount;
-
-        delete queuedTeams[mode];
-    }
-
     function withdraw(uint256 mode) public {
         if (queuedTeams[mode].owner == msg.sender) {
             delete queuedTeams[mode];
@@ -180,7 +157,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         }
     }
 
-    function commit(uint256 matchId, bytes32 _commit) external payable {
+    function commit(uint256 matchId, bytes32 _commit) external payable isInMatch(matchId) {
         logger.setMatchId(matchId);
 
         Match storage _match = matches[matchId];
@@ -239,7 +216,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         logger.setMatchId(0);
     }
 
-    function reveal(uint256 matchId, address move, bytes32 secret) external {
+    function reveal(uint256 matchId, address move, bytes32 secret) external isInMatch(matchId) {
         logger.setMatchId(matchId);
 
         Match storage _match = matches[matchId];
@@ -375,6 +352,52 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         logger.setMatchId(0);
     }
 
+    /**************************************************************************
+     * EXTERNAL VIEW FUNCTIONS
+     *************************************************************************/
+
+    function getMatchByUser(address user) external view returns (MatchView memory) {
+        uint256 matchId = accountToMatch[user];
+        Match storage _match = matches[matchId];
+        return
+            MatchView(
+            matchId,
+            _match,
+            monsters[_match.challengerTeam.firstMonsterId],
+            monsters[_match.challengerTeam.secondMonsterId],
+            monsters[_match.opponentTeam.firstMonsterId],
+            monsters[_match.opponentTeam.secondMonsterId],
+            getStatusEffectsArray(_match.challengerTeam.firstMonsterId),
+            getStatusEffectsArray(_match.challengerTeam.secondMonsterId),
+            getStatusEffectsArray(_match.opponentTeam.firstMonsterId),
+            getStatusEffectsArray(_match.opponentTeam.secondMonsterId),
+            address(logger)
+        );
+    }
+
+    function getStatusEffectsArray(
+        uint256 monsterId
+    )
+    public
+    view
+    returns (IBaseStatusEffectV1.StatusEffectWrapper[] memory effects)
+    {
+        effects = new IBaseStatusEffectV1.StatusEffectWrapper[](
+            statusEffects[monsterId].statusEffectCount
+        );
+        for (
+            uint256 i = 0;
+            i < statusEffects[monsterId].statusEffectCount;
+            i++
+        ) {
+            effects[i] = statusEffects[monsterId].statusEffects[i];
+        }
+    }
+
+    /**************************************************************************
+     * INTERNAL FUNCTIONS
+     *************************************************************************/
+
     function getOtherMonsterInTeam(
         uint256 monsterId,
         Team memory teamA,
@@ -394,28 +417,37 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         }
     }
 
-    function getStatusEffectsArray(
-        uint256 monsterId
-    )
-        public
-        view
-        returns (IBaseStatusEffectV1.StatusEffectWrapper[] memory effects)
-    {
-        effects = new IBaseStatusEffectV1.StatusEffectWrapper[](
-            statusEffects[monsterId].statusEffectCount
-        );
-        for (
-            uint256 i = 0;
-            i < statusEffects[monsterId].statusEffectCount;
-            i++
-        ) {
-            effects[i] = statusEffects[monsterId].statusEffects[i];
-        }
-    }
+    function join(uint256 mode, uint256 firstMonsterId, uint256 secondMonsterId) internal {
+        require(accountToMatch[msg.sender] == 0, "MatchMakerV2: already joined");
 
-    /**************************************************************************
-     * Status Effect Functions
-     *************************************************************************/
+        monsters[firstMonsterId] = monsterApi.getMonster(firstMonsterId);
+        monsters[secondMonsterId] = monsterApi.getMonster(secondMonsterId);
+
+        if (queuedTeams[mode].firstMonsterId == 0) {
+            queuedTeams[mode] = Team(msg.sender, firstMonsterId, secondMonsterId);
+            return;
+        }
+
+        require(
+            queuedTeams[mode].owner != msg.sender,
+            "MatchMakerV2: cannot play against yourself"
+        );
+
+        matches[++matchCount] = Match(
+            queuedTeams[mode],
+            Team(msg.sender, firstMonsterId, secondMonsterId),
+            Move(0, IMoveV1(address(0)), 0),
+            Move(0, IMoveV1(address(0)), 0),
+            Phase.Commit,
+            block.timestamp + timeout,
+            0
+        );
+
+        accountToMatch[queuedTeams[mode].owner] = matchCount;
+        accountToMatch[msg.sender] = matchCount;
+
+        delete queuedTeams[mode];
+    }
 
     function transitStatusEffects(
         uint256 fromMonsterId,
@@ -466,27 +498,5 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         for (uint256 i = 0; i < effects.length; i++) {
             statusEffects[monsterId].statusEffects[i] = effects[i];
         }
-    }
-
-    /**************************************************************************
-     * Utility view functions for frontend
-     *************************************************************************/
-    function getMatchByUser(address user) external view returns (MatchView memory) {
-        uint256 matchId = accountToMatch[user];
-        Match storage _match = matches[matchId];
-        return
-            MatchView(
-                matchId,
-                _match,
-                monsters[_match.challengerTeam.firstMonsterId],
-                monsters[_match.challengerTeam.secondMonsterId],
-                monsters[_match.opponentTeam.firstMonsterId],
-                monsters[_match.opponentTeam.secondMonsterId],
-                getStatusEffectsArray(_match.challengerTeam.firstMonsterId),
-                getStatusEffectsArray(_match.challengerTeam.secondMonsterId),
-                getStatusEffectsArray(_match.opponentTeam.firstMonsterId),
-                getStatusEffectsArray(_match.opponentTeam.secondMonsterId),
-                address(logger)
-            );
     }
 }
