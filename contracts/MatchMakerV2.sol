@@ -19,6 +19,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     uint256 public constant LOG_REVEAL = 1_000_001;
     // OLD EVENT WAS HERE, THAT'S WHY THE LOG ID 1_000_002 IS MISSING
     uint256 public constant LOG_GAME_OVER = 1_000_003;
+    uint256 public constant LOG_MONSTER_DEFEATED = 1_000_004;
 
     using StringsLibV1 for address;
     using StringsLibV1 for bytes32;
@@ -62,11 +63,17 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         IMonsterV1.Monster challengerMonster2;
         IMonsterV1.Monster opponentMonster1;
         IMonsterV1.Monster opponentMonster2;
-        IBaseStatusEffectV1.StatusEffectWrapper[] challengerStatusEffects1;
-        IBaseStatusEffectV1.StatusEffectWrapper[] challengerStatusEffects2;
-        IBaseStatusEffectV1.StatusEffectWrapper[] opponentStatusEffects1;
-        IBaseStatusEffectV1.StatusEffectWrapper[] opponentStatusEffects2;
+        StatusEffectWrapperView[] challengerStatusEffects1;
+        StatusEffectWrapperView[] challengerStatusEffects2;
+        StatusEffectWrapperView[] opponentStatusEffects1;
+        StatusEffectWrapperView[] opponentStatusEffects2;
         address eventLogger;
+    }
+
+    struct StatusEffectWrapperView {
+        address statusEffect;
+        uint8 remainingTurns;
+        uint8 group;
     }
 
     struct StatusEffectsContainer {
@@ -308,6 +315,10 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
                     ),
                     _match.round
                 );
+                logger.log(
+                    LOG_MONSTER_DEFEATED,
+                    challengerMonster.tokenId
+                );
             } else if (opponentMonster.hp == 0) {
                 transitStatusEffects(
                     opponentMonster.tokenId,
@@ -317,6 +328,10 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
                         _match.opponentTeam
                     ),
                     _match.round
+                );
+                logger.log(
+                    LOG_MONSTER_DEFEATED,
+                    opponentMonster.tokenId
                 );
             }
 
@@ -367,20 +382,17 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             monsters[_match.challengerTeam.secondMonsterId],
             monsters[_match.opponentTeam.firstMonsterId],
             monsters[_match.opponentTeam.secondMonsterId],
-            getStatusEffectsArray(_match.challengerTeam.firstMonsterId),
-            getStatusEffectsArray(_match.challengerTeam.secondMonsterId),
-            getStatusEffectsArray(_match.opponentTeam.firstMonsterId),
-            getStatusEffectsArray(_match.opponentTeam.secondMonsterId),
+            getStatusEffectsViewArray(_match.challengerTeam.firstMonsterId),
+            getStatusEffectsViewArray(_match.challengerTeam.secondMonsterId),
+            getStatusEffectsViewArray(_match.opponentTeam.firstMonsterId),
+            getStatusEffectsViewArray(_match.opponentTeam.secondMonsterId),
             address(logger)
         );
     }
 
     function getStatusEffectsArray(
         uint256 monsterId
-    )
-    public
-    view
-    returns (IBaseStatusEffectV1.StatusEffectWrapper[] memory effects)
+    ) public view returns (IBaseStatusEffectV1.StatusEffectWrapper[] memory effects)
     {
         effects = new IBaseStatusEffectV1.StatusEffectWrapper[](
             statusEffects[monsterId].statusEffectCount
@@ -391,6 +403,27 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             i++
         ) {
             effects[i] = statusEffects[monsterId].statusEffects[i];
+        }
+    }
+
+    function getStatusEffectsViewArray(
+        uint256 monsterId
+    ) public view returns (StatusEffectWrapperView[] memory effects)
+    {
+        IBaseStatusEffectV1.StatusEffectWrapper[] memory statusEffectsArray = getStatusEffectsArray(monsterId);
+        effects = new StatusEffectWrapperView[](
+            statusEffectsArray.length
+        );
+        for (
+            uint256 i = 0;
+            i < statusEffectsArray.length;
+            i++
+        ) {
+            effects[i] = StatusEffectWrapperView({
+                statusEffect: address(statusEffectsArray[i].statusEffect),
+                remainingTurns: statusEffectsArray[i].remainingTurns,
+                group: uint8(statusEffectsArray[i].statusEffect.group())
+            });
         }
     }
 
