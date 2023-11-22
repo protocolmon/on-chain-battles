@@ -8,6 +8,7 @@ interface IEventLoggerV1 {
         bytes data;
         uint256 timestamp;
         address player;
+        uint256 round;
     }
 
     struct DisplayLog {
@@ -15,7 +16,7 @@ interface IEventLoggerV1 {
         uint256 matchId;
     }
 
-    event LogEvent(uint256 id, uint256 matchId, uint256 action, uint256 timestamp, bytes data, address player);
+    event LogEvent(uint256 id, uint256 matchId, uint256 action, uint256 timestamp, bytes data, address player, uint256 round);
 
     function log(uint256 action, uint256 val) external;
 
@@ -38,4 +39,6 @@ interface IEventLoggerV1 {
     function setCurrentMoveExecutor(address player) external;
 
     function setMatchId(uint256 matchId) external;
+
+    function setRound(uint256 round) external;
 }

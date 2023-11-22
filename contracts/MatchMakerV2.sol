@@ -165,8 +165,6 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     }
 
     function commit(uint256 matchId, bytes32 _commit) external payable isInMatch(matchId) {
-        logger.setMatchId(matchId);
-
         Match storage _match = matches[matchId];
         require(
             _match.phase == Phase.Commit,
@@ -178,6 +176,9 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             _match.timeout > block.timestamp,
             "MatchMakerV2: commit timeout"
         );
+
+        logger.setMatchId(matchId);
+        logger.setRound(_match.round);
 
         bool isChallenger = _match.challengerTeam.owner == msg.sender;
         Move storage relevantMove = isChallenger
@@ -221,11 +222,10 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         );
 
         logger.setMatchId(0);
+        logger.setRound(0);
     }
 
     function reveal(uint256 matchId, address move, bytes32 secret) external isInMatch(matchId) {
-        logger.setMatchId(matchId);
-
         Match storage _match = matches[matchId];
         require(
             _match.phase == Phase.Reveal,
@@ -235,6 +235,9 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             _match.timeout > block.timestamp,
             "MatchMakerV2: reveal timeout"
         );
+
+        logger.setMatchId(matchId);
+        logger.setRound(_match.round);
 
         Move storage relevantMove = _match.challengerTeam.owner == msg.sender
             ? _match.currentChallengerMove
@@ -365,6 +368,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         }
 
         logger.setMatchId(0);
+        logger.setRound(0);
     }
 
     /**************************************************************************
