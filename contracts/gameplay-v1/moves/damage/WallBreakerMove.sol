@@ -34,32 +34,35 @@ contract WallBreakerMove is MoveV1 {
 
         // 80% chance that wall is broken
         if (isRandomHit(input.randomness, "wallBreaker", 100)) {
+            uint256 effectsLengthBefore = input.defenderStatusEffects.length;
             input.defenderStatusEffects = MoveLibV1.removeStatusEffectsByGroup(
                 input.defenderStatusEffects,
                 IBaseStatusEffectV1.StatusEffectGroup.WALL
             );
 
-            logger.log(
-                uint256(LogActions.Action.RemoveStatusEffectsByGroup),
-                address(this),
-                input.defender.tokenId,
-                uint256(IBaseStatusEffectV1.StatusEffectGroup.WALL)
-            );
+            if (effectsLengthBefore != input.defenderStatusEffects.length) {
+                logger.log(
+                    uint256(LogActions.Action.RemoveStatusEffectsByGroup),
+                    address(this),
+                    input.defender.tokenId,
+                    uint256(IBaseStatusEffectV1.StatusEffectGroup.WALL)
+                );
 
-            input.defenderStatusEffects = MoveLibV1.addStatusEffect(
-                input.defenderStatusEffects,
-                IBaseStatusEffectV1.StatusEffectWrapper(
-                    confusedEffect,
+                input.defenderStatusEffects = MoveLibV1.addStatusEffect(
+                    input.defenderStatusEffects,
+                    IBaseStatusEffectV1.StatusEffectWrapper(
+                        confusedEffect,
+                        CONFUSED_EFFECT_DURATION
+                    )
+                );
+
+                logger.log(
+                    uint256(LogActions.Action.AddStatusEffect),
+                    address(confusedEffect),
+                    input.defender.tokenId,
                     CONFUSED_EFFECT_DURATION
-                )
-            );
-
-            logger.log(
-                uint256(LogActions.Action.AddStatusEffect),
-                address(confusedEffect),
-                input.defender.tokenId,
-                CONFUSED_EFFECT_DURATION
-            );
+                );
+            }
         }
 
         bool isCriticalHit;
