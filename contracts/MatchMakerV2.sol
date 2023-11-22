@@ -525,6 +525,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         }
 
         storeStatusEffects(toMonsterId, toEffects);
+        storeStatusEffects(fromMonsterId, new IBaseStatusEffectV1.StatusEffectWrapper[](0));
     }
 
     function storeStatusEffects(
