@@ -7,7 +7,7 @@ async function main() {
     contracts.contracts.MatchMakerV2,
     MatchMakerV2,
   );
-  console.log("MatchMakerV2 upgraded to:", matchMakerV2.address);
+  console.log("MatchMakerV2 upgraded to:", await matchMakerV2.getAddress());
 }
 
 main()

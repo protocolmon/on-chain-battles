@@ -375,12 +375,10 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
      * EXTERNAL VIEW FUNCTIONS
      *************************************************************************/
 
-    function getMatchByUser(address user) external view returns (MatchView memory) {
-        uint256 matchId = accountToMatch[user];
-        Match storage _match = matches[matchId];
-        return
-            MatchView(
-            matchId,
+    function getMatchById(uint256 id) public view returns (MatchView memory) {
+        Match storage _match = matches[id];
+        return MatchView(
+            id,
             _match,
             monsters[_match.challengerTeam.firstMonsterId],
             monsters[_match.challengerTeam.secondMonsterId],
@@ -392,6 +390,11 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             getStatusEffectsViewArray(_match.opponentTeam.secondMonsterId),
             address(logger)
         );
+    }
+
+    function getMatchByUser(address user) external view returns (MatchView memory) {
+        uint256 matchId = accountToMatch[user];
+        return getMatchById(matchId);
     }
 
     function getStatusEffectsArray(
