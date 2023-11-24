@@ -34,6 +34,7 @@ contract DamageOverTimeMove is MoveV1 {
             input.defender.element
         );
 
+        bool logEffect = false;
         if (isRandomHit(input.randomness, "damageOverTime", chance)) {
             damageOverTimeEffect.storeInfo(
                 input.defender.tokenId,
@@ -43,12 +44,7 @@ contract DamageOverTimeMove is MoveV1 {
                 input.defenderStatusEffects,
                 IBaseStatusEffectV1.StatusEffectWrapper(damageOverTimeEffect, DAMAGE_OVER_TIME_DURATION)
             );
-            logger.log(
-                uint256(LogActions.Action.AddStatusEffect),
-                address(damageOverTimeEffect),
-                input.defender.tokenId,
-                DAMAGE_OVER_TIME_DURATION
-            );
+            logEffect = true;
         }
 
         // finally apply the potential critical hit after the damage over time effect
@@ -68,6 +64,15 @@ contract DamageOverTimeMove is MoveV1 {
             uint256(elementalMultiplier),
             isCriticalHit
         );
+
+        if (logEffect) {
+            logger.log(
+                uint256(LogActions.Action.AddStatusEffect),
+                address(damageOverTimeEffect),
+                input.defender.tokenId,
+                DAMAGE_OVER_TIME_DURATION
+            );
+        }
 
         return
             IMoveV1.MoveOutput(

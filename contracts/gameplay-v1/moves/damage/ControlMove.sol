@@ -33,17 +33,13 @@ contract ControlMove is MoveV1 {
         );
 
         // 80% chance to add control effect
+        bool logEffect = false;
         if (isRandomHit(input.randomness, "control", 80)) {
             input.defenderStatusEffects = MoveLibV1.addStatusEffect(
                 input.defenderStatusEffects,
                 IBaseStatusEffectV1.StatusEffectWrapper(foggedEffect, FOGGED_DURATION)
             );
-            logger.log(
-                uint256(LogActions.Action.AddStatusEffect),
-                address(foggedEffect),
-                input.defender.tokenId,
-                FOGGED_DURATION
-            );
+            logEffect = true;
         }
 
         // finally apply the potential critical hit after the damage over time effect
@@ -63,6 +59,15 @@ contract ControlMove is MoveV1 {
             uint256(elementalMultiplier),
             isCriticalHit
         );
+
+        if (logEffect) {
+            logger.log(
+                uint256(LogActions.Action.AddStatusEffect),
+                address(foggedEffect),
+                input.defender.tokenId,
+                FOGGED_DURATION
+            );
+        }
 
         return
             MoveOutput(

@@ -30,18 +30,13 @@ contract PurgeBuffsMove is MoveV1 {
             input.defender.element
         );
 
+        bool logEffect = false;
         if (isRandomHit(input.randomness, "purgeBuffs", chance)) {
             input.defenderStatusEffects = MoveLibV1.removeStatusEffectsByGroup(
                 input.defenderStatusEffects,
                 IBaseStatusEffectV1.StatusEffectGroup.BUFF
             );
-
-            logger.log(
-                uint256(LogActions.Action.RemoveStatusEffectsByGroup),
-                address(this),
-                input.defender.tokenId,
-                uint256(IBaseStatusEffectV1.StatusEffectGroup.BUFF)
-            );
+            logEffect = true;
         }
 
         // finally apply the potential critical hit after the damage over time effect
@@ -61,6 +56,15 @@ contract PurgeBuffsMove is MoveV1 {
             uint256(elementalMultiplier),
             isCriticalHit
         );
+
+        if (logEffect) {
+            logger.log(
+                uint256(LogActions.Action.RemoveStatusEffectsByGroup),
+                address(this),
+                input.defender.tokenId,
+                uint256(IBaseStatusEffectV1.StatusEffectGroup.BUFF)
+            );
+        }
 
         return
             IMoveV1.MoveOutput(

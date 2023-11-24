@@ -33,6 +33,7 @@ contract WallBreakerMove is MoveV1 {
         );
 
         // 80% chance that wall is broken
+        bool logEffects = false;
         if (isRandomHit(input.randomness, "wallBreaker", 100)) {
             uint256 effectsLengthBefore = input.defenderStatusEffects.length;
             input.defenderStatusEffects = MoveLibV1.removeStatusEffectsByGroup(
@@ -41,13 +42,6 @@ contract WallBreakerMove is MoveV1 {
             );
 
             if (effectsLengthBefore != input.defenderStatusEffects.length) {
-                logger.log(
-                    uint256(LogActions.Action.RemoveStatusEffectsByGroup),
-                    address(this),
-                    input.defender.tokenId,
-                    uint256(IBaseStatusEffectV1.StatusEffectGroup.WALL)
-                );
-
                 input.defenderStatusEffects = MoveLibV1.addStatusEffect(
                     input.defenderStatusEffects,
                     IBaseStatusEffectV1.StatusEffectWrapper(
@@ -56,12 +50,7 @@ contract WallBreakerMove is MoveV1 {
                     )
                 );
 
-                logger.log(
-                    uint256(LogActions.Action.AddStatusEffect),
-                    address(confusedEffect),
-                    input.defender.tokenId,
-                    CONFUSED_EFFECT_DURATION
-                );
+                logEffects = true;
             }
         }
 
@@ -81,6 +70,22 @@ contract WallBreakerMove is MoveV1 {
             uint256(elementalMultiplier),
             isCriticalHit
         );
+
+        if (logEffects) {
+            logger.log(
+                uint256(LogActions.Action.RemoveStatusEffectsByGroup),
+                address(this),
+                input.defender.tokenId,
+                uint256(IBaseStatusEffectV1.StatusEffectGroup.WALL)
+            );
+
+            logger.log(
+                uint256(LogActions.Action.AddStatusEffect),
+                address(confusedEffect),
+                input.defender.tokenId,
+                CONFUSED_EFFECT_DURATION
+            );
+        }
 
         return
             MoveOutput(
