@@ -22,11 +22,13 @@ contract AttackAuraMove is MoveV1 {
             )
         );
 
+        // auras are a special case we we log the apply right after the add because the frontend must
+        // show the apply only once
         logger.log(
-            uint256(LogActions.Action.AddStatusEffect),
-            address(attackAuraEffect),
-            input.attacker.tokenId,
-            type(uint8).max
+            uint256(LogActions.Action.ApplyMonsterStatusEffect),
+            address(this),
+            monster.tokenId,
+            attackAuraEffect.BOOST_VALUE
         );
 
         return

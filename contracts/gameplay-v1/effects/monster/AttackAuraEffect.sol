@@ -13,13 +13,6 @@ contract AttackAuraEffect is BaseMonsterStatusEffectWithoutStorageV1 {
     ) external returns (IMonsterV1.Monster memory) {
         monster.attack += BOOST_VALUE;
 
-        logger.log(
-            uint256(LogActions.Action.ApplyMonsterStatusEffect),
-            address(this),
-            monster.tokenId,
-            BOOST_VALUE
-        );
-
         return monster;
     }
 
