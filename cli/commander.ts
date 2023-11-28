@@ -40,7 +40,7 @@ let activeOpponentMonsterId: bigint = BigInt(0);
 let statusEffectsByMonsterId: Map<bigint, StatusEffect[]> = new Map();
 
 const GAS_LIMIT = 3_000_000;
-const MODE = 100;
+const MODE = 103;
 
 const logMonsterStatus = async (
   monsterId: bigint,
@@ -150,7 +150,7 @@ async function setupEventListener(matchMakerV2: MatchMakerV2): Promise<bigint> {
               opponentMonster1,
               opponentMonster2,
             ]) {
-              const [tokenId, element, hp, attack, defense, speed] =
+              const [_, element, hp, attack, defense, speed] =
                 await matchMakerV2.monsters(monsterId);
 
               logMonsterStatus(
@@ -297,12 +297,14 @@ async function main() {
   const matchMakerV2 = await getContractInstance<MatchMakerV2>("MatchMakerV2");
   setupEventListener(matchMakerV2);
 
-  const selectedMonsters = await promptManager.createPrompt(
-    "multiSelect",
-    "Choose 2 monsters:",
-    monsters,
-    2,
-  );
+  const selectedMonsters = (
+    await promptManager.createPrompt(
+      "multiSelect",
+      "Choose 2 monsters:",
+      monsters,
+      2,
+    )
+  ).map((monster) => `${parseInt(monster) + 1}`);
   logger.log(`Selected monsters: ${selectedMonsters.join(", ")}`);
   startMatchmaking(selectedMonsters);
 }

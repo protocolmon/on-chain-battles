@@ -8,6 +8,10 @@ abstract contract BaseMoveStatusEffectWithoutStorageV1 is
     BaseStatusEffectWithoutStorageV1,
     IMoveStatusEffectV1
 {
+    function extraData() external view override returns (uint256) {
+        return 0;
+    }
+
     function statusEffectType() external pure returns (StatusEffectType) {
         return StatusEffectType.MOVE;
     }

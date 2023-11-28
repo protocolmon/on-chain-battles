@@ -20,6 +20,8 @@ interface IBaseStatusEffectV1 {
 
     function applyEffect(uint256 randomness) external returns (bool);
 
+    function extraData() external view returns (uint256);
+
     function group() external view returns (StatusEffectGroup);
 
     /// @dev Indicates if only one of the same status effect can be applied

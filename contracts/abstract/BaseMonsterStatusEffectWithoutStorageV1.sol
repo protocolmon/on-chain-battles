@@ -8,6 +8,10 @@ abstract contract BaseMonsterStatusEffectWithoutStorageV1 is
     BaseStatusEffectWithoutStorageV1,
     IMonsterStatusEffectV1
 {
+    function extraData() external view virtual override returns (uint256) {
+        return 0;
+    }
+
     function rewindEffect(
         IMonsterV1.Monster memory monster,
         uint256 randomness

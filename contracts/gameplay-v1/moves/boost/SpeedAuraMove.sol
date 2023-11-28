@@ -27,8 +27,8 @@ contract SpeedAuraMove is MoveV1 {
         logger.log(
             uint256(LogActions.Action.ApplyMonsterStatusEffect),
             address(this),
-            monster.tokenId,
-            speedAuraEffect.BOOST_VALUE
+            input.attacker.tokenId,
+            speedAuraEffect.extraData()
         );
 
         return

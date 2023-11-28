@@ -25,6 +25,10 @@ contract DefenseAuraEffect is BaseMonsterStatusEffectWithoutStorageV1 {
         return monster;
     }
 
+    function extraData() external view override returns (uint256) {
+        return BOOST_VALUE;
+    }
+
     function group()
         external
         pure
