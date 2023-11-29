@@ -7,6 +7,9 @@ contract EventLoggerV1 is IEventLoggerV1 {
     uint256 private count;
     uint256 private currentMatchId;
     address private currentMoveExecutor;
+    address private currentMoveOpponent;
+    uint256 private currentMoveExecutorMonster;
+    uint256 private currentMoveOpponentMonster;
     uint256 private currentRound;
 
     mapping(uint256 => Log[]) public logsByMatchId;
@@ -61,8 +64,11 @@ contract EventLoggerV1 is IEventLoggerV1 {
         _storeLog(action, data);
     }
 
-    function setCurrentMoveExecutor(address player) external override {
-        currentMoveExecutor = player;
+    function setCurrentInfo(address executor, address opponent, uint256 executorMonster, uint256 opponentMonster) external override {
+        currentMoveExecutor = executor;
+        currentMoveOpponent = opponent;
+        currentMoveExecutorMonster = executorMonster;
+        currentMoveOpponentMonster = opponentMonster;
     }
 
     function setMatchId(uint256 matchId) external override {
@@ -80,12 +86,26 @@ contract EventLoggerV1 is IEventLoggerV1 {
             data: data,
             timestamp: block.timestamp,
             player: currentMoveExecutor,
+            opponent: currentMoveOpponent,
+            monster: currentMoveExecutorMonster,
+            opponentMonster: currentMoveOpponentMonster,
             round: currentRound
         });
 
         logsByMatchId[currentMatchId].push(newLog);
 
-        emit LogEvent(count, currentMatchId, action, block.timestamp, data, currentMoveExecutor, currentRound);
+        emit LogEvent(
+            count,
+            currentMatchId,
+            action,
+            block.timestamp,
+            data,
+            currentMoveExecutor,
+            currentMoveOpponent,
+            currentMoveExecutorMonster,
+            currentMoveOpponentMonster,
+            currentRound
+        );
     }
 
     function getLogs(uint256 matchId, uint256 offset) external view returns (Log[] memory) {

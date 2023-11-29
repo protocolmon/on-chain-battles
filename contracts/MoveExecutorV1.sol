@@ -89,7 +89,12 @@ contract MoveExecutorV1 is IMoveExecutorV1, AccessControl {
             (attacker, defender) = (defender, attacker);
         }
 
-        eventLogger.setCurrentMoveExecutor(attacker.player);
+        eventLogger.setCurrentInfo(
+            attacker.player,
+            defender.player,
+            attacker.monster.tokenId,
+            defender.monster.tokenId
+        );
 
         // Execute moves in order
         IMoveV1.MoveInput memory firstMoveInput = IMoveV1.MoveInput(
@@ -105,7 +110,13 @@ contract MoveExecutorV1 is IMoveExecutorV1, AccessControl {
             firstMoveInput
         );
 
-        eventLogger.setCurrentMoveExecutor(defender.player);
+        eventLogger.setCurrentInfo(
+            defender.player,
+            attacker.player,
+            defender.monster.tokenId,
+            attacker.monster.tokenId
+        );
+
         IMoveV1.MoveInput memory finalOutcome = executeAndPrepareForNext(
             defender.monster,
             defender.move,
@@ -132,7 +143,12 @@ contract MoveExecutorV1 is IMoveExecutorV1, AccessControl {
             randomness
         );
 
-        eventLogger.setCurrentMoveExecutor(address(0));
+        eventLogger.setCurrentInfo(
+            address(0),
+            address(0),
+            0,
+            0
+        );
 
         return (
             applyMonsterStatusEffects(
