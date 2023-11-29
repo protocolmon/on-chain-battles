@@ -221,8 +221,8 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             _commit
         );
 
-        logger.setMatchId(0);
         logger.setRound(0);
+        logger.setMatchId(0);
     }
 
     function reveal(uint256 matchId, address move, bytes32 secret) external isInMatch(matchId) {
@@ -367,8 +367,8 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             }
         }
 
-        logger.setMatchId(0);
         logger.setRound(0);
+        logger.setMatchId(0);
     }
 
     /**************************************************************************

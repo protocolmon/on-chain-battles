@@ -64,7 +64,7 @@ contract EventLoggerV1 is IEventLoggerV1 {
         _storeLog(action, data);
     }
 
-    function setCurrentInfo(address executor, address opponent, uint256 executorMonster, uint256 opponentMonster) external override {
+    function setCurrentInfo(address executor, address opponent, uint256 executorMonster, uint256 opponentMonster) external override hasMatchId {
         currentMoveExecutor = executor;
         currentMoveOpponent = opponent;
         currentMoveExecutorMonster = executorMonster;
@@ -75,7 +75,7 @@ contract EventLoggerV1 is IEventLoggerV1 {
         currentMatchId = matchId;
     }
 
-    function setRound(uint256 round) external override {
+    function setRound(uint256 round) external override hasMatchId {
         currentRound = round;
     }
 
