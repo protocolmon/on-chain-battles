@@ -54,6 +54,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         Phase phase;
         uint256 timeout;
         uint256 round;
+        address escaped;
     }
 
     struct MatchView {
@@ -155,12 +156,13 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     }
 
     function withdrawFromMatch(uint256 matchId) public {
-        accountToMatch[msg.sender] = 0;
-        // remove the accountToMatch also for the other player
-        if (matches[matchId].challengerTeam.owner == msg.sender) {
-            accountToMatch[matches[matchId].opponentTeam.owner] = 0;
-        } else {
-            accountToMatch[matches[matchId].challengerTeam.owner] = 0;
+        uint256 matchId = accountToMatch[msg.sender];
+        require(
+            matches[matchId].challengerTeam.owner == msg.sender ||
+            matches[matchId].opponentTeam.owner == msg.sender, "MatchMakerV2: not your match"
+        );
+        if (matches[matchId].escaped == address(0)) {
+            matches[matchId].escaped = msg.sender;
         }
     }
 
@@ -458,7 +460,11 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     }
 
     function join(uint256 mode, uint256 firstMonsterId, uint256 secondMonsterId) internal {
-        require(accountToMatch[msg.sender] == 0, "MatchMakerV2: already joined");
+        uint256 existingMatchId = accountToMatch[msg.sender];
+        require(
+            accountToMatch[msg.sender] == 0 || matches[existingMatchId].escaped != address(0),
+            "MatchMakerV2: already in match"
+        );
 
         monsters[firstMonsterId] = monsterApi.getMonster(firstMonsterId);
         monsters[secondMonsterId] = monsterApi.getMonster(secondMonsterId);
@@ -480,7 +486,8 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             Move(0, IMoveV1(address(0)), 0),
             Phase.Commit,
             block.timestamp + timeout,
-            0
+            0,
+            address(0)
         );
 
         accountToMatch[queuedTeams[mode].owner] = matchCount;
