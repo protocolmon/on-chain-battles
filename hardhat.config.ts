@@ -4,16 +4,16 @@ import "@openzeppelin/hardhat-upgrades";
 import "@nomicfoundation/hardhat-verify";
 require("hardhat-contract-sizer");
 
-const PMON_RPC = "https://polychain-monsters-testchain.alt.technology";
-const PMON_EXPLORER =
-  "https://polychain-monsters-testchain-explorer.alt.technology";
+const PMON_CHAIN_ID = 16890849095;
+const PMON_RPC = "https://polychain-monsters.alt.technology";
+const PMON_EXPLORER = "https://polychain-monsters-explorer.alt.technology";
 
 const config: HardhatUserConfig = {
   etherscan: {
     customChains: [
       {
         network: "pmon",
-        chainId: 16890849094,
+        chainId: PMON_CHAIN_ID,
         urls: {
           apiURL: `${PMON_EXPLORER}/api`,
           browserURL: PMON_EXPLORER,
@@ -27,13 +27,21 @@ const config: HardhatUserConfig = {
           browserURL: "https://nova.arbiscan.io",
         },
       },
+      {
+        network: "sapphire-test",
+        chainId: 23295,
+        urls: {
+          apiURL: "https://testnet.explorer.sapphire.oasis.dev/api",
+          browserURL: "https://testnet.explorer.sapphire.oasis.dev/",
+        },
+      },
     ],
     apiKey: process.env.ETHERSCAN_API_KEY || "customkey",
   },
   networks: {
     pmon: {
       url: PMON_RPC,
-      chainId: 16890849094,
+      chainId: PMON_CHAIN_ID,
       ...(process.env.PK && {
         accounts: [process.env.PK || ""],
       }),
@@ -50,6 +58,13 @@ const config: HardhatUserConfig = {
         accounts: [process.env.PK || ""],
       }),
       chainId: 42170,
+    },
+    "sapphire-test": {
+      url: "https://testnet.sapphire.oasis.dev",
+      ...(process.env.PK && {
+        accounts: [process.env.PK || ""],
+      }),
+      chainId: 23295,
     },
   },
   solidity: {

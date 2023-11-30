@@ -8,7 +8,11 @@
     "prepare": "husky install",
     "deploy": "npx hardhat run scripts/deploy.ts",
     "deploy:pmon": "npx hardhat run scripts/deploy.ts --network pmon",
-    "cli:pmon": "npx hardhat run ./cli/commander.ts --network pmon"
+    "deploy:nova": "npx hardhat run scripts/deploy.ts --network nova",
+    "deploy:sapphire-test": "npx hardhat run scripts/deploy.ts --network sapphire-test",
+    "cli:pmon": "npx hardhat run ./cli/commander.ts --network pmon",
+    "cli:sapphire-test": "npx hardhat run ./cli/commander.ts --network sapphire-test",
+    "cli:nova": "npx hardhat run ./cli/commander.ts --network nova"
   },
   "repository": {
     "type": "git",
