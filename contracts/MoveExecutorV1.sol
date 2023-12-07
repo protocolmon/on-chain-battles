@@ -227,6 +227,16 @@ contract MoveExecutorV1 is IMoveExecutorV1, AccessControl {
         IMoveV1 move,
         IMoveV1.MoveInput memory input
     ) internal returns (IMoveV1.MoveInput memory) {
+        if (attacker.hp == 0) {
+            return IMoveV1.MoveInput(
+                input.defender,
+                input.attacker,
+                input.defenderStatusEffects,
+                input.attackerStatusEffects,
+                input.randomness
+            );
+        }
+
         IMoveV1 moveAfterAttackerEffects = applyMoveStatusEffects(
             move,
             input.attackerStatusEffects,

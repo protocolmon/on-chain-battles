@@ -4,13 +4,21 @@ import "@openzeppelin/hardhat-upgrades";
 import "@nomicfoundation/hardhat-verify";
 require("hardhat-contract-sizer");
 
-const PMON_CHAIN_ID = 16890849095;
+const PMON_CHAIN_ID = 16890849097;
 const PMON_RPC = "https://polychain-monsters.alt.technology";
 const PMON_EXPLORER = "https://polychain-monsters-explorer.alt.technology";
 
 const config: HardhatUserConfig = {
   etherscan: {
     customChains: [
+      {
+        network: "arbitrum-sepolia",
+        chainId: 421614,
+        urls: {
+          apiURL: "https://sepolia-explorer.arbitrum.io/api",
+          browserURL: "https://sepolia-explorer.arbitrum.io",
+        },
+      },
       {
         network: "pmon",
         chainId: PMON_CHAIN_ID,
@@ -39,6 +47,12 @@ const config: HardhatUserConfig = {
     apiKey: process.env.ETHERSCAN_API_KEY || "customkey",
   },
   networks: {
+    ["arbitrum-sepolia"]: {
+      url: "https://sepolia-rollup.arbitrum.io/rpc",
+      ...(process.env.PK && {
+        accounts: [process.env.PK || ""],
+      }),
+    },
     pmon: {
       url: PMON_RPC,
       chainId: PMON_CHAIN_ID,

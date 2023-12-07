@@ -1,16 +1,8 @@
 import { ethers, upgrades } from "hardhat";
 import fs from "fs";
+import { deployContract } from "./utils";
 
-async function deployContract(factoryName: string, args: any = []) {
-  console.log(`Deploying ${factoryName}...`);
-  const Factory = await ethers.getContractFactory(factoryName);
-  const instance = await Factory.deploy(...args);
-  const address = await instance.getAddress();
-  console.log(`${factoryName} deployed to:`, address);
-  return { instance, address };
-}
-
-async function deployProxy(factoryName: string, args: any = []) {
+export async function deployProxy(factoryName: string, args: any = []) {
   console.log(`Deploying ${factoryName}...`);
   const Factory = await ethers.getContractFactory(factoryName);
   const instance = await upgrades.deployProxy(Factory, args);
@@ -193,6 +185,10 @@ async function main() {
   output.effects.SpeedAuraEffect = speedAuraEffectAddress;
   output.attacks.SpeedAuraMove = speedAuraMoveAddress;
   output.effects.ConfusedEffect = await confusedEffect.getAddress();
+  output.attacks.ConfusedControlMove = confusedControlMove;
+  output.attacks.ConfusedDamageOverTimeMove = confusedDamageOverTimeMove;
+  output.attacks.ConfusedPurgeBuffsMove = confusedPurgeBuffsMove;
+  output.attacks.ConfusedWallBreakerMove = confusedWallBreakerMove;
 
   // iterate through all attacks and effects and set the event emitter
   for (const key of Object.keys(output.attacks)) {

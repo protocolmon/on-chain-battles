@@ -143,7 +143,11 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         uint256 firstMonsterTokenId = monsterApi.createMonsterByName(firstMonster);
         uint256 secondMonsterTokenId = monsterApi.createMonsterByName(secondMonster);
 
-        withdraw(mode);
+        if (accountToMatch[msg.sender] != 0) {
+            withdrawFromMatch(accountToMatch[msg.sender]);
+        } else {
+            withdraw(mode);
+        }
 
         join(mode, firstMonsterTokenId, secondMonsterTokenId);
     }
@@ -164,6 +168,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         if (matches[matchId].escaped == address(0)) {
             matches[matchId].escaped = msg.sender;
         }
+        accountToMatch[msg.sender] = 0;
     }
 
     function commit(uint256 matchId, bytes32 _commit) external payable isInMatch(matchId) {
