@@ -270,7 +270,7 @@ describe("OCB", function () {
       await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
       await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-      expect(await matchMakerV2.matchCount()).to.equal(1);
+      expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
 
       const { speedAuraMove } = await deployAttacks(eventLogger);
 
@@ -288,10 +288,10 @@ describe("OCB", function () {
 
       // boost should not be persisted
       const monster1 = await matchMakerV2.monsters(1);
-      expect(monster1.speed).to.equal(120);
+      expect(monster1.speed).to.equal(BigInt(120));
 
       const monster2 = await matchMakerV2.monsters(3);
-      expect(monster2.speed).to.equal(125);
+      expect(monster2.speed).to.equal(BigInt(125));
 
       const statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
       expect(statusEffectsMonster1.length).to.equal(1);
@@ -309,7 +309,7 @@ describe("OCB", function () {
       await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
       await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-      expect(await matchMakerV2.matchCount()).to.equal(1);
+      expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
 
       const { healMove } = await deployAttacks(eventLogger);
 
@@ -327,10 +327,10 @@ describe("OCB", function () {
 
       // hp should not be higher than initial hp
       const monster1 = await matchMakerV2.monsters(1);
-      expect(monster1.hp).to.equal(120);
+      expect(monster1.hp).to.equal(BigInt(120));
 
       const monster2 = await matchMakerV2.monsters(3);
-      expect(monster2.hp).to.equal(125);
+      expect(monster2.hp).to.equal(BigInt(125));
 
       const statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
       expect(statusEffectsMonster1.length).to.equal(0);
@@ -348,7 +348,7 @@ describe("OCB", function () {
       await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
       await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-      expect(await matchMakerV2.matchCount()).to.equal(1);
+      expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
 
       const { cloudCoverMove, purgeBuffsMove } =
         await deployAttacks(eventLogger);
@@ -381,7 +381,7 @@ describe("OCB", function () {
       await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
       await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-      expect(await matchMakerV2.matchCount()).to.equal(1);
+      expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
 
       const { cloudCoverMove } = await deployAttacks(eventLogger);
 
@@ -413,7 +413,7 @@ describe("OCB", function () {
       await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
       await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-      expect(await matchMakerV2.matchCount()).to.equal(1);
+      expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
 
       const { damageOverTimeAttack } = await deployAttacks(eventLogger);
 
@@ -513,10 +513,10 @@ describe("OCB", function () {
       let [, , monster1Hp, , , speed1] = await matchMakerV2.monsters(1);
       let [, , monster2Hp, , , speed2] = await matchMakerV2.monsters(3);
 
-      expect(monster1Hp).to.equal(120);
-      expect(monster2Hp).to.equal(125);
-      expect(speed1).to.equal(140);
-      expect(speed2).to.equal(125);
+      expect(monster1Hp).to.equal(BigInt(120));
+      expect(monster2Hp).to.equal(BigInt(125));
+      expect(speed1).to.equal(BigInt(140));
+      expect(speed2).to.equal(BigInt(125));
 
       const matchId = 1;
 
@@ -539,14 +539,14 @@ describe("OCB", function () {
         await cloudCoverEffect.getAddress(),
       );
       expect(statusEffectsMonster2[0][1]).to.equal(
-        2, // turns left
+        BigInt(2), // turns left
       );
 
       // no damage yet
       [, , monster1Hp] = await matchMakerV2.monsters(1);
       [, , monster2Hp] = await matchMakerV2.monsters(3);
-      expect(monster1Hp).to.equal(120);
-      expect(monster2Hp).to.equal(125);
+      expect(monster1Hp).to.equal(BigInt(120));
+      expect(monster2Hp).to.equal(BigInt(125));
 
       await runAttacks(
         matchMakerV2,
@@ -561,8 +561,8 @@ describe("OCB", function () {
       // no damage yet
       [, , monster1Hp] = await matchMakerV2.monsters(1);
       [, , monster2Hp] = await matchMakerV2.monsters(3);
-      expect(monster1Hp).to.equal(120);
-      expect(monster2Hp).to.equal(125);
+      expect(monster1Hp).to.equal(BigInt(120));
+      expect(monster2Hp).to.equal(BigInt(125));
 
       statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
       expect(statusEffectsMonster1.length).to.equal(1);
@@ -570,7 +570,7 @@ describe("OCB", function () {
         await cloudCoverEffect.getAddress(),
       );
       expect(statusEffectsMonster1[0][1]).to.equal(
-        2, // turns left
+        BigInt(2), // turns left
       );
 
       statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
@@ -579,13 +579,13 @@ describe("OCB", function () {
         await cloudCoverEffect.getAddress(),
       );
       expect(statusEffectsMonster2[0][1]).to.equal(
-        1, // turns left
+        BigInt(1), // turns left
       );
       expect(statusEffectsMonster2[1][0]).to.equal(
         await speedAuraEffect.getAddress(),
       );
       expect(statusEffectsMonster2[1][1]).to.equal(
-        254, // turns left
+        BigInt(254), // turns left
       );
 
       await cloudCoverEffect.setChance(0);
@@ -603,8 +603,8 @@ describe("OCB", function () {
       // big damage
       [, , monster1Hp] = await matchMakerV2.monsters(1);
       [, , monster2Hp] = await matchMakerV2.monsters(3);
-      expect(monster1Hp).to.equal(12);
-      expect(monster2Hp).to.equal(125);
+      expect(monster1Hp).to.equal(BigInt(12));
+      expect(monster2Hp).to.equal(BigInt(125));
 
       statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
       expect(statusEffectsMonster1.length).to.equal(3);
@@ -612,13 +612,13 @@ describe("OCB", function () {
         await cloudCoverEffect.getAddress(),
       );
       expect(statusEffectsMonster1[0][1]).to.equal(
-        1, // turns left
+        BigInt(1), // turns left
       );
       expect(statusEffectsMonster1[1][0]).to.equal(
         await speedAuraEffect.getAddress(),
       );
       expect(statusEffectsMonster1[1][1]).to.equal(
-        254, // turns left
+        BigInt(254), // turns left
       );
       expect(statusEffectsMonster1[2][0]).to.equal(
         await damageOverTimeEffect.getAddress(),
@@ -630,7 +630,7 @@ describe("OCB", function () {
         await speedAuraEffect.getAddress(),
       );
       expect(statusEffectsMonster2[0][1]).to.equal(
-        253, // turns left
+        BigInt(253), // turns left
       );
 
       await runAttacks(
@@ -646,8 +646,8 @@ describe("OCB", function () {
       // first monster killed
       [, , monster1Hp] = await matchMakerV2.monsters(1);
       [, , monster2Hp] = await matchMakerV2.monsters(3);
-      expect(monster1Hp).to.equal(0);
-      expect(monster2Hp).to.equal(125);
+      expect(monster1Hp).to.equal(BigInt(0));
+      expect(monster2Hp).to.equal(BigInt(125));
 
       statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
       expect(statusEffectsMonster2.length).to.equal(2);
@@ -655,13 +655,13 @@ describe("OCB", function () {
         await speedAuraEffect.getAddress(),
       );
       expect(statusEffectsMonster2[0][1]).to.equal(
-        252, // turns left
+        BigInt(252), // turns left
       );
       expect(statusEffectsMonster2[1][0]).to.equal(
         await elementalWallEffect.getAddress(),
       );
       expect(statusEffectsMonster2[1][1]).to.equal(
-        2, // turns left
+        BigInt(2), // turns left
       );
     });
   });

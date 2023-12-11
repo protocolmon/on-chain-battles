@@ -38,8 +38,9 @@
   },
   "dependencies": {
     "@nomicfoundation/hardhat-toolbox": "^3.0.0",
-    "@openzeppelin/contracts-upgradeable": "^5.0.0",
-    "blessed": "^0.1.81"
+    "@openzeppelin/contracts-upgradeable": "^5.0.1",
+    "blessed": "^0.1.81",
+    "erc721a-upgradeable": "^4.2.3"
   },
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown"
