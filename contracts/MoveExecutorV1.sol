@@ -369,6 +369,9 @@ contract MoveExecutorV1 is IMoveExecutorV1, AccessControl {
             );
             if (moveStatusEffect.stage() == stage) {
                 modifiedMove = moveStatusEffect.applyEffect(move, randomness);
+                if (modifiedMove == IMoveV1(address(0))) {
+                    break;
+                }
             }
         }
 
