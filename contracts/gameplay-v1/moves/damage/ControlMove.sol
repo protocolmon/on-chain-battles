@@ -18,7 +18,7 @@ contract ControlMove is MoveV1 {
 
     function execute(
         MoveInput memory input
-    ) external returns (MoveOutput memory) {
+    ) external onlyExecutor returns (MoveOutput memory) {
         uint16 damage = BaseDamage.calculateBaseDamage(
             input.attacker,
             input.defender

@@ -10,6 +10,7 @@ abstract contract GamePlayItem {
     address internal deployer;
     /// @dev The contract that is actually allowed to execute moves
     address internal executor;
+
     IEventLoggerV1 internal logger;
 
     modifier onlyDeployer() {
@@ -39,6 +40,6 @@ abstract contract GamePlayItem {
     }
 
     function setExecutor(address _executor) external onlyDeployer {
-        deployer = _executor;
+        executor = _executor;
     }
 }

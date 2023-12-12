@@ -12,7 +12,7 @@ abstract contract BaseConfusedMove is MoveV1 {
 
     function execute(
         IMoveV1.MoveInput memory input
-    ) external override returns (IMoveV1.MoveOutput memory) {
+    ) external onlyExecutor override returns (IMoveV1.MoveOutput memory) {
         IMoveV1.MoveOutput memory output = originalMove.execute(
             IMoveV1.MoveInput(
                 input.attacker,

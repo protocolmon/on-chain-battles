@@ -16,7 +16,7 @@ contract PurgeBuffsMove is MoveV1 {
 
     function execute(
         IMoveV1.MoveInput memory input
-    ) external returns (IMoveV1.MoveOutput memory) {
+    ) external onlyExecutor returns (IMoveV1.MoveOutput memory) {
         uint16 damage = BaseDamage.calculateBaseDamage(
             input.attacker,
             input.defender

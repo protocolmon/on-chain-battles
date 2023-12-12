@@ -15,7 +15,7 @@ contract ElementalWallMove is MoveV1 {
 
     function execute(
         IMoveV1.MoveInput memory input
-    ) external returns (IMoveV1.MoveOutput memory) {
+    ) external onlyExecutor returns (IMoveV1.MoveOutput memory) {
         input.attackerStatusEffects = MoveLibV1.addStatusEffect(
             // attacker is the executor of the elemental wall here
             input.attackerStatusEffects,

@@ -1,8 +1,14 @@
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
-import { EventLoggerV1, MatchMakerV2, MonsterApiV1 } from "../typechain-types";
+import {
+  EventLoggerV1,
+  MatchMakerV2,
+  MonsterApiV1,
+  MoveExecutorV1,
+} from "../typechain-types";
 import { Signer } from "ethers";
 import { decodeAbiParameters } from "viem";
+import { move } from "../typechain-types/contracts/gameplay-v1/effects";
 
 const ONE_MINUTE = 60;
 
@@ -64,7 +70,10 @@ describe("OCB", function () {
     };
   }
 
-  async function deployAttacks(logger: EventLoggerV1) {
+  async function deployAttacks(
+    logger: EventLoggerV1,
+    moveExecutorV1: MoveExecutorV1,
+  ) {
     const DamageOverTimeEffect = await ethers.getContractFactory(
       "DamageOverTimeEffect",
     );
@@ -79,6 +88,7 @@ describe("OCB", function () {
       100,
     );
     await damageOverTimeMove.setLogger(await logger.getAddress());
+    await damageOverTimeMove.setExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await damageOverTimeMove.getAddress());
 
     const FoggedEffect = await ethers.getContractFactory("FoggedEffect");
@@ -91,6 +101,7 @@ describe("OCB", function () {
       await foggedEffect.getAddress(),
     );
     await controlMove.setLogger(await logger.getAddress());
+    await controlMove.setExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await controlMove.getAddress());
 
     const CloudCoverEffect =
@@ -104,6 +115,7 @@ describe("OCB", function () {
       await cloudCoverEffect.getAddress(),
     );
     await cloudCoverMove.setLogger(await logger.getAddress());
+    await cloudCoverMove.setExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await cloudCoverMove.getAddress());
 
     const SpeedAuraEffect = await ethers.getContractFactory("SpeedAuraEffect");
@@ -116,16 +128,19 @@ describe("OCB", function () {
       await speedAuraEffect.getAddress(),
     );
     await speedAuraMove.setLogger(await logger.getAddress());
+    await speedAuraMove.setExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await speedAuraMove.getAddress());
 
-    const healMove = await ethers.getContractFactory("HealMove");
-    const HealMove = await healMove.deploy();
-    await HealMove.setLogger(await logger.getAddress());
-    await logger.addWriter(await HealMove.getAddress());
+    const HealMove = await ethers.getContractFactory("HealMove");
+    const healMove = await HealMove.deploy();
+    await healMove.setLogger(await logger.getAddress());
+    await healMove.setExecutor(await moveExecutorV1.getAddress());
+    await logger.addWriter(await healMove.getAddress());
 
     const PurgeBuffsMove = await ethers.getContractFactory("PurgeBuffsMove");
     const purgeBuffsMove = await PurgeBuffsMove.deploy(100);
     await purgeBuffsMove.setLogger(await logger.getAddress());
+    await purgeBuffsMove.setExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await purgeBuffsMove.getAddress());
 
     const ConfusedEffect = await ethers.getContractFactory("ConfusedEffect");
@@ -138,6 +153,7 @@ describe("OCB", function () {
       await confusedEffect.getAddress(),
     );
     await wallBreakerMove.setLogger(await logger.getAddress());
+    await wallBreakerMove.setExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await wallBreakerMove.getAddress());
 
     const ElementalWallEffect = await ethers.getContractFactory(
@@ -155,22 +171,23 @@ describe("OCB", function () {
       await elementalWallEffect.getAddress(),
     );
     await elementalWallMove.setLogger(await logger.getAddress());
+    await elementalWallMove.setExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await elementalWallMove.getAddress());
 
     return {
-      cloudCoverEffect: cloudCoverEffect,
       damageOverTimeAttack: damageOverTimeMove,
       cloudCoverMove: cloudCoverMove,
       speedAuraMove: speedAuraMove,
-      healMove: HealMove,
-      purgeBuffsMove: purgeBuffsMove,
-      speedAuraEffect: speedAuraEffect,
-      damageOverTimeEffect: damageOverTimeEffect,
       controlEffect: foggedEffect,
-      controlMove: controlMove,
-      wallBreakerMove: wallBreakerMove,
-      elementalWallEffect: elementalWallEffect,
-      elementalWallMove: elementalWallMove,
+      cloudCoverEffect,
+      healMove,
+      purgeBuffsMove,
+      speedAuraEffect,
+      damageOverTimeEffect,
+      controlMove,
+      wallBreakerMove,
+      elementalWallEffect,
+      elementalWallMove,
     };
   }
 
@@ -280,8 +297,14 @@ describe("OCB", function () {
     });
 
     it("should allow both players to apply a speed boost", async function () {
-      const { account2, account3, monsterApiV1, matchMakerV2, eventLogger } =
-        await deploy();
+      const {
+        account2,
+        account3,
+        monsterApiV1,
+        matchMakerV2,
+        eventLogger,
+        moveExecutorV1,
+      } = await deploy();
 
       await createMockMonsters(monsterApiV1);
 
@@ -290,7 +313,10 @@ describe("OCB", function () {
 
       expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
 
-      const { speedAuraMove } = await deployAttacks(eventLogger);
+      const { speedAuraMove } = await deployAttacks(
+        eventLogger,
+        moveExecutorV1,
+      );
 
       const matchId = 1;
 
@@ -319,8 +345,14 @@ describe("OCB", function () {
     });
 
     it("should allow both players to apply a heal (even if makes no sense)", async function () {
-      const { account2, account3, monsterApiV1, matchMakerV2, eventLogger } =
-        await deploy();
+      const {
+        account2,
+        account3,
+        monsterApiV1,
+        matchMakerV2,
+        eventLogger,
+        moveExecutorV1,
+      } = await deploy();
 
       await createMockMonsters(monsterApiV1);
 
@@ -329,7 +361,7 @@ describe("OCB", function () {
 
       expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
 
-      const { healMove } = await deployAttacks(eventLogger);
+      const { healMove } = await deployAttacks(eventLogger, moveExecutorV1);
 
       const matchId = 1;
 
@@ -358,8 +390,14 @@ describe("OCB", function () {
     });
 
     it("should destroy a cloud cover with purge buffs", async function () {
-      const { account2, account3, monsterApiV1, matchMakerV2, eventLogger } =
-        await deploy();
+      const {
+        account2,
+        account3,
+        monsterApiV1,
+        matchMakerV2,
+        eventLogger,
+        moveExecutorV1,
+      } = await deploy();
 
       await createMockMonsters(monsterApiV1);
 
@@ -368,8 +406,10 @@ describe("OCB", function () {
 
       expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
 
-      const { cloudCoverMove, purgeBuffsMove } =
-        await deployAttacks(eventLogger);
+      const { cloudCoverMove, purgeBuffsMove } = await deployAttacks(
+        eventLogger,
+        moveExecutorV1,
+      );
 
       const matchId = 1;
 
@@ -391,8 +431,14 @@ describe("OCB", function () {
     });
 
     it("should allow both players to apply a cloud cover", async function () {
-      const { account2, account3, monsterApiV1, matchMakerV2, eventLogger } =
-        await deploy();
+      const {
+        account2,
+        account3,
+        monsterApiV1,
+        matchMakerV2,
+        eventLogger,
+        moveExecutorV1,
+      } = await deploy();
 
       await createMockMonsters(monsterApiV1);
 
@@ -401,7 +447,10 @@ describe("OCB", function () {
 
       expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
 
-      const { cloudCoverMove } = await deployAttacks(eventLogger);
+      const { cloudCoverMove } = await deployAttacks(
+        eventLogger,
+        moveExecutorV1,
+      );
 
       const matchId = 1;
 
@@ -423,8 +472,14 @@ describe("OCB", function () {
     });
 
     it("should allow basic gameplay", async function () {
-      const { account2, account3, monsterApiV1, matchMakerV2, eventLogger } =
-        await deploy();
+      const {
+        account2,
+        account3,
+        monsterApiV1,
+        matchMakerV2,
+        eventLogger,
+        moveExecutorV1,
+      } = await deploy();
 
       await createMockMonsters(monsterApiV1);
 
@@ -433,7 +488,10 @@ describe("OCB", function () {
 
       expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
 
-      const { damageOverTimeAttack } = await deployAttacks(eventLogger);
+      const { damageOverTimeAttack } = await deployAttacks(
+        eventLogger,
+        moveExecutorV1,
+      );
 
       const matchId = 1;
 
@@ -461,8 +519,14 @@ describe("OCB", function () {
     });
 
     it("should execute heal before damage", async () => {
-      const { account2, account3, matchMakerV2, monsterApiV1, eventLogger } =
-        await deploy();
+      const {
+        account2,
+        account3,
+        matchMakerV2,
+        monsterApiV1,
+        eventLogger,
+        moveExecutorV1,
+      } = await deploy();
 
       await createMockMonsters(monsterApiV1);
 
@@ -472,7 +536,7 @@ describe("OCB", function () {
       const matchId = await matchMakerV2.matchCount();
 
       const { healMove, damageOverTimeAttack, speedAuraMove, cloudCoverMove } =
-        await deployAttacks(eventLogger);
+        await deployAttacks(eventLogger, moveExecutorV1);
 
       // lets run a speed aura first to make player 2 faster than player 1
       await runAttacks(
@@ -507,8 +571,14 @@ describe("OCB", function () {
     });
 
     it("should have issues fixed that occured in a battle on 2023-10-20", async () => {
-      const { account2, account3, monsterApiV1, matchMakerV2, eventLogger } =
-        await deploy();
+      const {
+        account2,
+        account3,
+        monsterApiV1,
+        matchMakerV2,
+        eventLogger,
+        moveExecutorV1,
+      } = await deploy();
 
       const {
         cloudCoverEffect,
@@ -521,7 +591,7 @@ describe("OCB", function () {
         controlMove,
         elementalWallEffect,
         elementalWallMove,
-      } = await deployAttacks(eventLogger);
+      } = await deployAttacks(eventLogger, moveExecutorV1);
 
       await cloudCoverEffect.setChance(100);
 
@@ -685,8 +755,14 @@ describe("OCB", function () {
   });
 
   it("should store events", async () => {
-    const { account2, account3, matchMakerV2, monsterApiV1, eventLogger } =
-      await deploy();
+    const {
+      account2,
+      account3,
+      matchMakerV2,
+      monsterApiV1,
+      eventLogger,
+      moveExecutorV1,
+    } = await deploy();
 
     await createMockMonsters(monsterApiV1);
 
@@ -695,8 +771,10 @@ describe("OCB", function () {
 
     const matchId = await matchMakerV2.matchCount();
 
-    const { damageOverTimeAttack, damageOverTimeEffect } =
-      await deployAttacks(eventLogger);
+    const { damageOverTimeAttack, damageOverTimeEffect } = await deployAttacks(
+      eventLogger,
+      moveExecutorV1,
+    );
 
     await runAttacks(
       matchMakerV2,
@@ -714,8 +792,14 @@ describe("OCB", function () {
   });
 
   it("should return active status effects in the MatchView", async () => {
-    const { account2, account3, matchMakerV2, monsterApiV1, eventLogger } =
-      await deploy();
+    const {
+      account2,
+      account3,
+      matchMakerV2,
+      monsterApiV1,
+      eventLogger,
+      moveExecutorV1,
+    } = await deploy();
 
     await createMockMonsters(monsterApiV1);
 
@@ -724,7 +808,7 @@ describe("OCB", function () {
 
     const matchId = await matchMakerV2.matchCount();
 
-    const { cloudCoverMove } = await deployAttacks(eventLogger);
+    const { cloudCoverMove } = await deployAttacks(eventLogger, moveExecutorV1);
 
     await runAttacks(
       matchMakerV2,
