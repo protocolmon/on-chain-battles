@@ -59,6 +59,11 @@ async function main() {
     matchMakerV2Address,
   );
 
+  await (eventLoggerV1 as EventLoggerV1).addWriter(matchMakerV2Address);
+  await (eventLoggerV1 as EventLoggerV1).addWriter(
+    await moveExecutorV1.getAddress(),
+  );
+
   output.contracts.MatchMakerV2 = matchMakerV2Address;
 
   const ConfusedEffect = await ethers.getContractFactory("ConfusedEffect");
@@ -197,7 +202,7 @@ async function main() {
     console.log(`Setting event emitter for ${key}...`);
     const attackContract = await ethers.getContractAt(key, output.attacks[key]);
     await attackContract.setLogger(eventLoggerV1Address);
-    await attackContract.setExecutor(moveExecutorV1Address);
+    await attackContract.addExecutor(moveExecutorV1Address);
     console.log(`Permitting contract for event logger...`);
     await (eventLoggerV1 as EventLoggerV1).addWriter(
       await attackContract.getAddress(),

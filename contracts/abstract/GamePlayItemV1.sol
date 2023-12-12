@@ -8,8 +8,8 @@ import { IEventLoggerV1 } from "../interfaces/IEventLoggerV1.sol";
 abstract contract GamePlayItem {
     /// @dev If we'd use OZ Ownable here we would need to pass owner to every constructor, not worth the extra code here
     address internal deployer;
-    /// @dev The contract that is actually allowed to execute moves
-    address internal executor;
+    /// @dev The contracts that are actually allowed to execute moves
+    mapping(address => bool) internal executors;
 
     IEventLoggerV1 internal logger;
 
@@ -19,7 +19,7 @@ abstract contract GamePlayItem {
     }
 
     modifier onlyExecutor() {
-        require(msg.sender == executor, "GamePlayItem: Only executor can call this function");
+        require(executors[msg.sender], "GamePlayItem: Only executors can call this function");
         _;
     }
 
@@ -39,7 +39,7 @@ abstract contract GamePlayItem {
         logger = _logger;
     }
 
-    function setExecutor(address _executor) external onlyDeployer {
-        executor = _executor;
+    function addExecutor(address _executor) external onlyDeployer {
+        executors[_executor] = true;
     }
 }
