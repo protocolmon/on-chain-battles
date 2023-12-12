@@ -6,7 +6,13 @@ import "../lib/RandomnessLibV1.sol";
 import { IEventLoggerV1 } from "../interfaces/IEventLoggerV1.sol";
 
 abstract contract GamePlayItem {
+    /// @dev If we'd use OZ Ownable here we would need to pass owner to every constructor, not worth the extra code here
+    address private deployer;
     IEventLoggerV1 internal logger;
+
+    constructor() {
+        deployer = msg.sender;
+    }
 
     function isRandomHit(
         uint256 seed,
@@ -17,6 +23,7 @@ abstract contract GamePlayItem {
     }
 
     function setLogger(IEventLoggerV1 _logger) external {
+        require(msg.sender == deployer, "GamePlayItem: Only deployer can set logger");
         logger = _logger;
     }
 }
