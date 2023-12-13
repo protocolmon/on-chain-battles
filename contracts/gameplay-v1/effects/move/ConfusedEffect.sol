@@ -10,7 +10,7 @@ contract ConfusedEffect is BaseMoveStatusEffectWithoutStorageV1 {
     function applyEffect(
         IMoveV1 move,
         uint256 randomness
-    ) external override returns (IMoveV1 returnMove) {
+    ) external onlyExecutor override returns (IMoveV1 returnMove) {
         returnMove = move;
 
         bool isHit = move.moveType() == IMoveV1.MoveType.Damage &&

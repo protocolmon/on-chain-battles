@@ -10,7 +10,7 @@ contract DefenseAuraEffect is BaseMonsterStatusEffectWithoutStorageV1 {
     function applyEffect(
         IMonsterV1.Monster memory monster,
         uint256
-    ) external returns (IMonsterV1.Monster memory) {
+    ) external view returns (IMonsterV1.Monster memory) {
         monster.defense += BOOST_VALUE;
 
         return monster;

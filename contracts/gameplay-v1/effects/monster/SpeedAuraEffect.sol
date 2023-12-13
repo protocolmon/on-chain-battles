@@ -10,7 +10,7 @@ contract SpeedAuraEffect is BaseMonsterStatusEffectWithoutStorageV1 {
     function applyEffect(
         IMonsterV1.Monster memory monster,
         uint256
-    ) external returns (IMonsterV1.Monster memory) {
+    ) external view returns (IMonsterV1.Monster memory) {
         monster.speed += BOOST_VALUE;
 
         return monster;

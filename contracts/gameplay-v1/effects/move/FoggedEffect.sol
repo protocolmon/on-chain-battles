@@ -10,7 +10,7 @@ contract FoggedEffect is BaseMoveStatusEffectWithoutStorageV1 {
     function applyEffect(
         IMoveV1 move,
         uint256 randomness
-    ) external returns (IMoveV1 returnMove) {
+    ) external onlyExecutor returns (IMoveV1 returnMove) {
         returnMove = move;
 
         bool isHit = move.moveType() == IMoveV1.MoveType.Damage && isRandomHit(randomness, name(), CHANCE);

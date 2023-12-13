@@ -8,8 +8,6 @@ abstract contract BaseConfusedMove is MoveV1 {
 
     constructor(IMoveV1 _originalMove) {
         originalMove = _originalMove;
-
-        GamePlayItem(address(originalMove)).addExecutor(address(this));
     }
 
     function execute(

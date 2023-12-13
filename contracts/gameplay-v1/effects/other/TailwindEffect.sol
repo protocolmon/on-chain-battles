@@ -14,7 +14,7 @@ contract TailwindEffect is BaseMoveStatusEffectWithoutStorageV1 {
 
     function applyEffect(
         uint256 randomness
-    ) external override returns (bool isHit) {
+    ) external onlyExecutor override returns (bool isHit) {
         isHit = isRandomHit(randomness, name(), 40);
 
         logger.log(

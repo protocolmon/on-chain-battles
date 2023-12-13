@@ -83,6 +83,13 @@ contract EventLoggerV1 is Ownable, IEventLoggerV1 {
         _storeLog(action, data);
     }
 
+    function resetCurrentInfo() external override hasMatchId isWriter {
+        currentMoveExecutor = address(0);
+        currentMoveOpponent = address(0);
+        currentMoveExecutorMonster = 0;
+        currentMoveOpponentMonster = 0;
+    }
+
     function setCurrentInfo(
         address executor,
         address opponent,

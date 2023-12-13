@@ -143,26 +143,25 @@ contract MoveExecutorV1 is IMoveExecutorV1, AccessControl {
             randomness
         );
 
-        eventLogger.setCurrentInfo(
-            address(0),
-            address(0),
-            0,
-            0
+        finalOutcome.attacker = applyMonsterStatusEffects(
+            finalOutcome.attacker,
+            finalOutcome.attackerStatusEffects,
+            randomness,
+            IMonsterStatusEffectV1.Stage.POST_MOVE
         );
 
+        finalOutcome.defender = applyMonsterStatusEffects(
+            finalOutcome.defender,
+            finalOutcome.defenderStatusEffects,
+            randomness,
+            IMonsterStatusEffectV1.Stage.POST_MOVE
+        );
+
+        eventLogger.resetCurrentInfo();
+
         return (
-            applyMonsterStatusEffects(
-                finalOutcome.attacker,
-                finalOutcome.attackerStatusEffects,
-                randomness,
-                IMonsterStatusEffectV1.Stage.POST_MOVE
-            ),
-            applyMonsterStatusEffects(
-                finalOutcome.defender,
-                finalOutcome.defenderStatusEffects,
-                randomness,
-                IMonsterStatusEffectV1.Stage.POST_MOVE
-            ),
+            finalOutcome.attacker,
+            finalOutcome.defender,
             finalOutcome.attackerStatusEffects,
             finalOutcome.defenderStatusEffects
         );

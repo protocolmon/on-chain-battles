@@ -79,6 +79,7 @@ describe("OCB", function () {
     );
     const damageOverTimeEffect = await DamageOverTimeEffect.deploy();
     await damageOverTimeEffect.setLogger(await logger.getAddress());
+    await damageOverTimeEffect.addExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await damageOverTimeEffect.getAddress());
 
     const DamageOverTimeMove =
@@ -94,6 +95,7 @@ describe("OCB", function () {
     const FoggedEffect = await ethers.getContractFactory("FoggedEffect");
     const foggedEffect = await FoggedEffect.deploy();
     await foggedEffect.setLogger(await logger.getAddress());
+    await foggedEffect.addExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await foggedEffect.getAddress());
 
     const ControlMove = await ethers.getContractFactory("ControlMove");
@@ -108,6 +110,7 @@ describe("OCB", function () {
       await ethers.getContractFactory("CloudCoverEffect");
     const cloudCoverEffect = await CloudCoverEffect.deploy(0);
     await cloudCoverEffect.setLogger(await logger.getAddress());
+    await cloudCoverEffect.addExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await cloudCoverEffect.getAddress());
 
     const CloudCoverMove = await ethers.getContractFactory("CloudCoverMove");
@@ -121,6 +124,7 @@ describe("OCB", function () {
     const SpeedAuraEffect = await ethers.getContractFactory("SpeedAuraEffect");
     const speedAuraEffect = await SpeedAuraEffect.deploy();
     await speedAuraEffect.setLogger(await logger.getAddress());
+    await speedAuraEffect.addExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await speedAuraEffect.getAddress());
 
     const SpeedAuraMove = await ethers.getContractFactory("SpeedAuraMove");
@@ -146,6 +150,7 @@ describe("OCB", function () {
     const ConfusedEffect = await ethers.getContractFactory("ConfusedEffect");
     const confusedEffect = await ConfusedEffect.deploy();
     await confusedEffect.setLogger(await logger.getAddress());
+    await confusedEffect.addExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await confusedEffect.getAddress());
 
     const WallBreakerMove = await ethers.getContractFactory("WallBreakerMove");
@@ -163,6 +168,7 @@ describe("OCB", function () {
       await wallBreakerMove.getAddress(),
     );
     await elementalWallEffect.setLogger(await logger.getAddress());
+    await elementalWallEffect.addExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await elementalWallEffect.getAddress());
 
     const ElementalWallMove =

@@ -209,6 +209,27 @@ async function main() {
     );
   }
 
+  for (const key of [
+    "ControlMove",
+    "DamageOverTimeMove",
+    "PurgeBuffsMove",
+    "WallBreakerMove",
+  ]) {
+    console.log(`Setting confused executor for ${key}...`);
+    const attackContract = await ethers.getContractAt(key, output.attacks[key]);
+    const confusedAttackContract = await ethers.getContractAt(
+      "Confused" + key,
+      output.attacks["Confused" + key],
+    );
+    await attackContract.addExecutor(await confusedAttackContract.getAddress());
+    console.log(`Setting executor for Tailwind for attack ${key}...`);
+    const tailwindEffect = await ethers.getContractAt(
+      "TailwindEffect",
+      tailwindEffectAddress,
+    );
+    await tailwindEffect.addExecutor(await attackContract.getAddress());
+  }
+
   for (const key of Object.keys(output.effects)) {
     console.log(`Setting event emitter for ${key}...`);
     const effectContract = await ethers.getContractAt(key, output.effects[key]);
@@ -217,6 +238,8 @@ async function main() {
     await (eventLoggerV1 as EventLoggerV1).addWriter(
       await effectContract.getAddress(),
     );
+    console.log(`Setting executor for ${key}...`);
+    await effectContract.addExecutor(moveExecutorV1Address);
   }
 
   // Writing to a JSON file
