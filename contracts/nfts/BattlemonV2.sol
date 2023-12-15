@@ -9,12 +9,14 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721VotesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 import "./randomness/interfaces/IRandomnessV1.sol";
 import "./metadata/interfaces/IBattlemonMetadataV1.sol";
 import "./allowlist/interfaces/IAllowlistV1.sol";
+import "./randomness/interfaces/IRandomnessCallbackV1.sol";
 
-contract MyToken is
+contract BattlemonV2 is
     Initializable,
     ERC721Upgradeable,
     ERC721EnumerableUpgradeable,
@@ -22,7 +24,9 @@ contract MyToken is
     ERC721BurnableUpgradeable,
     AccessControlUpgradeable,
     EIP712Upgradeable,
-    ERC721VotesUpgradeable
+    ERC721VotesUpgradeable,
+    ReentrancyGuardUpgradeable,
+    IRandomnessCallbackV1
 {
     struct Edition {
         uint256 supply;
@@ -35,7 +39,7 @@ contract MyToken is
 
     struct TokenInfo {
         uint256 mintDate;
-        uint256 random;
+        uint256 randomness;
         uint256 editionId;
     }
 
@@ -54,8 +58,8 @@ contract MyToken is
      * MAPPINGS *
      ***************************/
 
-    /// @dev Storage of the random numbers
-    mapping(uint256 => uint256) public tokenInfo;
+    /// @dev Storage of the random numbers, mint date, etc.
+    mapping(uint256 => TokenInfo) public tokenInfo;
 
     /// @dev Mapping of edition IDs to editions
     mapping(uint24 => Edition) public editions;
@@ -88,18 +92,80 @@ contract MyToken is
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, minter);
+
+        /// @dev we start at token 1
+        _nextTokenId = 1;
     }
 
-    function safeMint(
+    /// @dev amount = number of monsters to mint
+    function mintTo(
         address to,
-        string memory uri
-    ) public onlyRole(MINTER_ROLE) {
-        uint256 tokenId = _nextTokenId++;
-        _safeMint(to, tokenId);
-        _setTokenURI(tokenId, uri);
+        uint24 editionId,
+        uint256 amount
+    ) public payable nonReentrant {
+        /** CHECKS */
+        require(amount > 0, "BattlemonV1: Zero amount");
+        require(to != address(0), "BattlemonV1: Zero address");
+
+        Edition storage edition = editions[editionId];
+        require(edition.maxSupply > 0, "BattlemonV1: No supply");
+        require(
+            edition.supply + amount <= edition.maxSupply,
+            "BattlemonV1: Max supply reached"
+        );
+        require(
+            msg.value == edition.price * amount,
+            "BattlemonV1: Wrong payment"
+        );
+
+        (bool isAllowed, bool hasCallback) = edition.allowlist.isAllowed(
+            msg.sender
+        );
+        if (address(edition.allowlist) != address(0)) {
+            require(isAllowed, "BattlemonV1: Not allowed");
+        }
+
+        /** EFFECTS */
+        uint256[] memory tokenIds = new uint256[](amount);
+
+        // @dev: yep, could be handled more efficient, but gas is cheap on nova
+        for (uint256 i = 0; i < amount; i++) {
+            uint256 tokenId = _nextTokenId++;
+            tokenIds[i] = tokenId;
+            _safeMint(to, tokenId);
+        }
+
+        edition.supply += amount;
+
+        // we request the random numbers from the randomness oracle
+        randomness.requestRandomWords(
+            IRandomnessV1.RequestType.Monsters,
+            tokenIds,
+            this
+        );
     }
 
-    // The following functions are overrides required by Solidity.
+    /****************************
+     * ORACLE FUNCTIONS *
+     ***************************/
+
+    function fulfillRandomWords(
+        uint256[] memory tokenIds,
+        uint256[] memory randomWords
+    ) external override {
+        require(msg.sender == address(randomness), "BondimonV1: Only oracle");
+        require(
+            tokenIds.length == randomWords.length,
+            "BondimonV1: Wrong length"
+        );
+
+        for (uint256 i = 0; i < randomWords.length; i++) {
+            uint256 tokenId = tokenIds[i];
+            tokenInfo[tokenId].randomness = randomWords[i];
+
+            emit RandomWordsFulfilled(tokenId, randomWords[i]);
+        }
+    }
 
     // The following functions are overrides required by Solidity.
 
