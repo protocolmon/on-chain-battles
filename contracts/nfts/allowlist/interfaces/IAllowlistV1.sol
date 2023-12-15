@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 
 interface IAllowlistV1 {
     function isAllowed(
-        address account
+        address account,
+        uint256 amount
     ) external view returns (bool allowed, bool hasCallback);
 }

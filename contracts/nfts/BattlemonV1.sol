@@ -1,32 +1,33 @@
-// SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.21;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
 
-// OpenZeppelin
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721VotesUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
-// ERC721A
-import "erc721a-upgradeable/contracts/extensions/ERC721ABurnableUpgradeable.sol";
-
-// Own Interfaces
 import "./randomness/interfaces/IRandomnessV1.sol";
-import "./randomness/interfaces/IRandomnessCallbackV1.sol";
 import "./metadata/interfaces/IBattlemonMetadataV1.sol";
 import "./allowlist/interfaces/IAllowlistV1.sol";
+import "./randomness/interfaces/IRandomnessCallbackV1.sol";
 
 contract BattlemonV1 is
-    ERC721ABurnableUpgradeable,
-    OwnableUpgradeable,
-    IRandomnessCallbackV1,
-    ReentrancyGuardUpgradeable
+    Initializable,
+    ERC721Upgradeable,
+    ERC721EnumerableUpgradeable,
+    ERC721URIStorageUpgradeable,
+    ERC721BurnableUpgradeable,
+    AccessControlUpgradeable,
+    EIP712Upgradeable,
+    ERC721VotesUpgradeable,
+    ReentrancyGuardUpgradeable,
+    IRandomnessCallbackV1
 {
-    using Strings for uint256;
-
     struct Edition {
         uint256 supply;
         uint256 maxSupply;
@@ -36,6 +37,14 @@ contract BattlemonV1 is
         IAllowlistV1 allowlist;
     }
 
+    struct TokenInfo {
+        uint256 mintDate;
+        uint256 randomness;
+        uint256 editionId;
+    }
+
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+
     /****************************
      * VARIABLES *
      ***************************/
@@ -43,15 +52,17 @@ contract BattlemonV1 is
     /// @dev Our oracle
     IRandomnessV1 public randomness;
 
+    uint256 private _nextTokenId;
+
     /****************************
      * MAPPINGS *
      ***************************/
 
-    /// @dev Storage of the random numbers
-    mapping(uint256 => uint256) public tokenIdToRandom;
+    /// @dev Storage of the random numbers, mint date, etc.
+    mapping(uint256 => TokenInfo) public tokenInfo;
 
     /// @dev Mapping of edition IDs to editions
-    mapping(uint24 => Edition) public editions;
+    mapping(uint256 => Edition) public editions;
 
     /****************************
      * EVENTS *
@@ -62,24 +73,28 @@ contract BattlemonV1 is
         uint256 indexed randomness
     );
 
-    /****************************
-     * CONSTRUCTOR *
-     ***************************/
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(
-        address _randomness
-    ) public initializerERC721A initializer {
-        __ERC721A_init("BattlemonV1", "BTLMON");
-        __ERC721ABurnable_init();
-        __Ownable_init(msg.sender);
-        __ReentrancyGuard_init();
+        address defaultAdmin,
+        address minter
+    ) public initializer {
+        __ERC721_init("BattlemonV1", "BTLMON");
+        __ERC721Enumerable_init();
+        __ERC721URIStorage_init();
+        __ERC721Burnable_init();
+        __AccessControl_init();
+        __EIP712_init("BattlemonV1", "1");
+        __ERC721Votes_init();
 
-        randomness = IRandomnessV1(_randomness);
+        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
+        _grantRole(MINTER_ROLE, minter);
+
+        /// @dev we start at token 1
+        _nextTokenId = 1;
     }
 
     /// @dev amount = number of monsters to mint
@@ -104,20 +119,27 @@ contract BattlemonV1 is
         );
 
         (bool isAllowed, bool hasCallback) = edition.allowlist.isAllowed(
-            msg.sender
+            msg.sender,
+            amount
         );
         if (address(edition.allowlist) != address(0)) {
             require(isAllowed, "BattlemonV1: Not allowed");
         }
 
         /** EFFECTS */
-        uint256 startId = _nextTokenId();
         uint256[] memory tokenIds = new uint256[](amount);
 
-        // @dev: yep, could be handled more efficient, but gas is cheap on nova
         for (uint256 i = 0; i < amount; i++) {
-            uint256 tokenId = startId + i;
+            uint256 tokenId = _nextTokenId++;
             tokenIds[i] = tokenId;
+
+            tokenInfo[tokenId] = TokenInfo({
+                mintDate: block.timestamp,
+                randomness: 0,
+                editionId: editionId
+            });
+
+            _safeMint(to, tokenId);
         }
 
         edition.supply += amount;
@@ -128,76 +150,6 @@ contract BattlemonV1 is
             tokenIds,
             this
         );
-
-        _mint(to, amount);
-    }
-
-    function nextTokenId() external view returns (uint256) {
-        return _nextTokenId();
-    }
-
-    /******************************
-     * PUBLIC VIEW FUNCTIONS *
-     ***************************/
-
-    function exists(uint256 tokenId) public view returns (bool) {
-        return _exists(tokenId);
-    }
-
-    function getMonster(
-        uint256 tokenId
-    ) public view returns (IBattlemonMetadataV1.Monster memory) {
-        require(_exists(tokenId), "BattlemonV1: Token does not exist");
-        require(
-            tokenIdToRandom[tokenId] != 0,
-            "BattlemonV1: Randomness not set"
-        );
-
-        uint24 edition = _ownershipOf(tokenId).extraData;
-        return
-            editions[edition].metadata.getMonster(
-                tokenId,
-                tokenIdToRandom[tokenId]
-            );
-    }
-
-    function tokenURI(
-        uint256 tokenId
-    )
-        public
-        view
-        override(ERC721AUpgradeable, IERC721AUpgradeable)
-        returns (string memory)
-    {
-        require(_exists(tokenId), "BattlemonV1: Token does not exist");
-        require(
-            tokenIdToRandom[tokenId] != 0,
-            "BattlemonV1: Randomness not set"
-        );
-
-        uint24 edition = _ownershipOf(tokenId).extraData;
-        return
-            editions[edition].metadata.tokenURI(
-                tokenId,
-                tokenIdToRandom[tokenId]
-            );
-    }
-
-    /***************************
-     * ERC721A Overrides *
-     **************************/
-
-    function _startTokenId() internal pure override returns (uint256) {
-        return 1;
-    }
-
-    /// @dev Keep extra data on transfer
-    function _extraData(
-        address,
-        address,
-        uint24 previousExtraData
-    ) internal pure override returns (uint24) {
-        return previousExtraData;
     }
 
     /****************************
@@ -216,10 +168,97 @@ contract BattlemonV1 is
 
         for (uint256 i = 0; i < randomWords.length; i++) {
             uint256 tokenId = tokenIds[i];
-            tokenIdToRandom[tokenId] = randomWords[i];
+            tokenInfo[tokenId].randomness = randomWords[i];
 
             emit RandomWordsFulfilled(tokenId, randomWords[i]);
         }
+    }
+
+    /****************************
+     * SOLIDITY OVERRIDES *
+     ***************************/
+
+    function _update(
+        address to,
+        uint256 tokenId,
+        address auth
+    )
+        internal
+        override(
+            ERC721Upgradeable,
+            ERC721EnumerableUpgradeable,
+            ERC721VotesUpgradeable
+        )
+        returns (address)
+    {
+        return super._update(to, tokenId, auth);
+    }
+
+    function _increaseBalance(
+        address account,
+        uint128 value
+    )
+        internal
+        override(
+            ERC721Upgradeable,
+            ERC721EnumerableUpgradeable,
+            ERC721VotesUpgradeable
+        )
+    {
+        super._increaseBalance(account, value);
+    }
+
+    function tokenURI(
+        uint256 tokenId
+    )
+        public
+        view
+        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
+        returns (string memory)
+    {
+        require(exists(tokenId), "BattlemonV1: Token does not exist");
+        TokenInfo memory info = tokenInfo[tokenId];
+        require(info.randomness != 0, "BattlemonV1: Randomness not set");
+
+        uint256 editionId = info.editionId;
+        return editions[editionId].metadata.tokenURI(tokenId, info.randomness);
+    }
+
+    function supportsInterface(
+        bytes4 interfaceId
+    )
+        public
+        view
+        override(
+            ERC721Upgradeable,
+            ERC721EnumerableUpgradeable,
+            ERC721URIStorageUpgradeable,
+            AccessControlUpgradeable
+        )
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
+    }
+
+    /******************************
+     * PUBLIC VIEW FUNCTIONS *
+     ***************************/
+
+    function exists(uint256 tokenId) public view returns (bool) {
+        return tokenInfo[tokenId].mintDate > 0;
+    }
+
+    function getMonster(
+        uint256 tokenId
+    ) public view returns (IBattlemonMetadataV1.Monster memory) {
+        require(exists(tokenId), "BattlemonV1: Token does not exist");
+
+        TokenInfo memory info = tokenInfo[tokenId];
+        require(info.randomness != 0, "BattlemonV1: Randomness not set");
+
+        uint256 editionId = info.editionId;
+        return
+            editions[editionId].metadata.getMonster(tokenId, info.randomness);
     }
 
     /****************************
@@ -233,7 +272,7 @@ contract BattlemonV1 is
         address paymentReceiver,
         IBattlemonMetadataV1 metadata,
         IAllowlistV1 allowlist
-    ) external onlyOwner {
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(editions[editionId].maxSupply == 0, "Edition already exists");
 
         editions[editionId] = Edition({
@@ -253,7 +292,7 @@ contract BattlemonV1 is
         address paymentReceiver,
         IBattlemonMetadataV1 metadata,
         IAllowlistV1 allowlist
-    ) external onlyOwner {
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(editions[editionId].maxSupply > 0, "Edition does not exist");
 
         editions[editionId].maxSupply = maxSupply;
@@ -263,11 +302,15 @@ contract BattlemonV1 is
         editions[editionId].allowlist = allowlist;
     }
 
-    function withdraw(address payable to) external onlyOwner {
+    function withdraw(
+        address payable to
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         to.transfer(address(this).balance);
     }
 
-    function setRandomness(address _randomness) external onlyOwner {
+    function setRandomness(
+        address _randomness
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         randomness = IRandomnessV1(_randomness);
     }
 
