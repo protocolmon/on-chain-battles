@@ -101,13 +101,19 @@ contract MyToken is
 
     // The following functions are overrides required by Solidity.
 
+    // The following functions are overrides required by Solidity.
+
     function _update(
         address to,
         uint256 tokenId,
         address auth
     )
         internal
-        override(ERC721, ERC721Enumerable, ERC721Votes)
+        override(
+            ERC721Upgradeable,
+            ERC721EnumerableUpgradeable,
+            ERC721VotesUpgradeable
+        )
         returns (address)
     {
         return super._update(to, tokenId, auth);
@@ -116,13 +122,25 @@ contract MyToken is
     function _increaseBalance(
         address account,
         uint128 value
-    ) internal override(ERC721, ERC721Enumerable, ERC721Votes) {
+    )
+        internal
+        override(
+            ERC721Upgradeable,
+            ERC721EnumerableUpgradeable,
+            ERC721VotesUpgradeable
+        )
+    {
         super._increaseBalance(account, value);
     }
 
     function tokenURI(
         uint256 tokenId
-    ) public view override(ERC721, ERC721URIStorage) returns (string memory) {
+    )
+        public
+        view
+        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
+        returns (string memory)
+    {
         return super.tokenURI(tokenId);
     }
 
@@ -131,7 +149,12 @@ contract MyToken is
     )
         public
         view
-        override(ERC721, ERC721Enumerable, ERC721URIStorage, AccessControl)
+        override(
+            ERC721Upgradeable,
+            ERC721EnumerableUpgradeable,
+            ERC721URIStorageUpgradeable,
+            AccessControlUpgradeable
+        )
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
