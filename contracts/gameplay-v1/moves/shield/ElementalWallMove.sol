@@ -2,7 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/MoveV1.sol";
-import { LogActions } from "../../lib/LogActions.sol";
+import {LogActions} from "../../lib/LogActions.sol";
 
 contract ElementalWallMove is MoveV1 {
     uint8 public constant ELEMENTAL_WALL_DURATION = 3;
@@ -20,7 +20,10 @@ contract ElementalWallMove is MoveV1 {
             // attacker is the executor of the elemental wall here
             input.attackerStatusEffects,
             // will count in current turn and next turn
-            IBaseStatusEffectV1.StatusEffectWrapper(elementalWallEffect, ELEMENTAL_WALL_DURATION)
+            IBaseStatusEffectV1.StatusEffectWrapper(
+                elementalWallEffect,
+                ELEMENTAL_WALL_DURATION
+            )
         );
 
         logger.log(

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/MoveWithStorageV1.sol";
-import { LogActions } from "../../lib/LogActions.sol";
+import {LogActions} from "../../lib/LogActions.sol";
 
 contract HealMove is MoveWithStorageV1 {
     function execute(

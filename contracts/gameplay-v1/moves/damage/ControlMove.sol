@@ -5,7 +5,7 @@ import "../../../abstract/MoveV1.sol";
 import "../../lib/ElementalEffectiveness.sol";
 import "../../lib/CriticalHit.sol";
 import "../../lib/BaseDamage.sol";
-import { LogActions } from "../../lib/LogActions.sol";
+import {LogActions} from "../../lib/LogActions.sol";
 
 contract ControlMove is MoveV1 {
     uint8 public constant FOGGED_DURATION = 3;
@@ -25,19 +25,23 @@ contract ControlMove is MoveV1 {
         );
 
         uint16 elementalMultiplier;
-        (damage, elementalMultiplier) = ElementalEffectiveness.applyElementalEffectiveness(
-            damage,
-            input.attacker.element,
-            getSecondElement(input.attacker.element),
-            input.defender.element
-        );
+        (damage, elementalMultiplier) = ElementalEffectiveness
+            .applyElementalEffectiveness(
+                damage,
+                input.attacker.element,
+                getSecondElement(input.attacker.element),
+                input.defender.element
+            );
 
         // 80% chance to add control effect
         bool logEffect = false;
         if (isRandomHit(input.randomness, "control", 80)) {
             input.defenderStatusEffects = MoveLibV1.addStatusEffect(
                 input.defenderStatusEffects,
-                IBaseStatusEffectV1.StatusEffectWrapper(foggedEffect, FOGGED_DURATION)
+                IBaseStatusEffectV1.StatusEffectWrapper(
+                    foggedEffect,
+                    FOGGED_DURATION
+                )
             );
             logEffect = true;
         }

@@ -19,7 +19,12 @@ import "./randomness/interfaces/IRandomnessCallbackV1.sol";
 import "./metadata/interfaces/IBattlemonMetadataV1.sol";
 import "./allowlist/interfaces/IAllowlistV1.sol";
 
-contract BattlemonV1 is ERC721ABurnableUpgradeable, OwnableUpgradeable, IRandomnessCallbackV1, ReentrancyGuardUpgradeable {
+contract BattlemonV1 is
+    ERC721ABurnableUpgradeable,
+    OwnableUpgradeable,
+    IRandomnessCallbackV1,
+    ReentrancyGuardUpgradeable
+{
     using Strings for uint256;
 
     struct Edition {
@@ -66,7 +71,9 @@ contract BattlemonV1 is ERC721ABurnableUpgradeable, OwnableUpgradeable, IRandomn
         _disableInitializers();
     }
 
-    function initialize(address _randomness) public initializerERC721A initializer {
+    function initialize(
+        address _randomness
+    ) public initializerERC721A initializer {
         __ERC721A_init("BattlemonV1", "BTLMON");
         __ERC721ABurnable_init();
         __Ownable_init(msg.sender);
@@ -76,17 +83,29 @@ contract BattlemonV1 is ERC721ABurnableUpgradeable, OwnableUpgradeable, IRandomn
     }
 
     /// @dev amount = number of monsters to mint
-    function mintTo(address to, uint24 editionId, uint256 amount) public payable nonReentrant {
+    function mintTo(
+        address to,
+        uint24 editionId,
+        uint256 amount
+    ) public payable nonReentrant {
         /** CHECKS */
         require(amount > 0, "BattlemonV1: Zero amount");
         require(to != address(0), "BattlemonV1: Zero address");
 
         Edition storage edition = editions[editionId];
         require(edition.maxSupply > 0, "BattlemonV1: No supply");
-        require(edition.supply + amount <= edition.maxSupply, "BattlemonV1: Max supply reached");
-        require(msg.value == edition.price * amount, "BattlemonV1: Wrong payment");
+        require(
+            edition.supply + amount <= edition.maxSupply,
+            "BattlemonV1: Max supply reached"
+        );
+        require(
+            msg.value == edition.price * amount,
+            "BattlemonV1: Wrong payment"
+        );
 
-        (bool isAllowed, bool hasCallback) = edition.allowlist.isAllowed(msg.sender);
+        (bool isAllowed, bool hasCallback) = edition.allowlist.isAllowed(
+            msg.sender
+        );
         if (address(edition.allowlist) != address(0)) {
             require(isAllowed, "BattlemonV1: Not allowed");
         }
@@ -135,12 +154,21 @@ contract BattlemonV1 is ERC721ABurnableUpgradeable, OwnableUpgradeable, IRandomn
         );
 
         uint24 edition = _ownershipOf(tokenId).extraData;
-        return editions[edition].metadata.getMonster(tokenId, tokenIdToRandom[tokenId]);
+        return
+            editions[edition].metadata.getMonster(
+                tokenId,
+                tokenIdToRandom[tokenId]
+            );
     }
 
     function tokenURI(
         uint256 tokenId
-    ) public view override(ERC721AUpgradeable, IERC721AUpgradeable) returns (string memory) {
+    )
+        public
+        view
+        override(ERC721AUpgradeable, IERC721AUpgradeable)
+        returns (string memory)
+    {
         require(_exists(tokenId), "BattlemonV1: Token does not exist");
         require(
             tokenIdToRandom[tokenId] != 0,
@@ -148,7 +176,11 @@ contract BattlemonV1 is ERC721ABurnableUpgradeable, OwnableUpgradeable, IRandomn
         );
 
         uint24 edition = _ownershipOf(tokenId).extraData;
-        return editions[edition].metadata.tokenURI(tokenId, tokenIdToRandom[tokenId]);
+        return
+            editions[edition].metadata.tokenURI(
+                tokenId,
+                tokenIdToRandom[tokenId]
+            );
     }
 
     /***************************

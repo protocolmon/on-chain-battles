@@ -107,7 +107,15 @@ contract MonsterApiV1 is IMonsterApiV1 {
             revert("Unknown monster");
         }
 
-        createMonster(++monsterCount, element, hp, attack, defense, speed, monster);
+        createMonster(
+            ++monsterCount,
+            element,
+            hp,
+            attack,
+            defense,
+            speed,
+            monster
+        );
 
         return monsterCount;
     }

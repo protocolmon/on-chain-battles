@@ -44,15 +44,39 @@ interface IEventLoggerV1 {
 
     function log(uint256 action, address addr1, address addr2, bool b) external;
 
-    function log(uint256 action, address addr, uint256 val1, uint256 val2) external;
+    function log(
+        uint256 action,
+        address addr,
+        uint256 val1,
+        uint256 val2
+    ) external;
 
-    function log(uint256 action, address addr, uint256 val1, uint256 val2, uint256 val3) external;
+    function log(
+        uint256 action,
+        address addr,
+        uint256 val1,
+        uint256 val2,
+        uint256 val3
+    ) external;
 
-    function log(uint256 action, address addr, uint256 val1, uint256 val2, uint256 val3, uint256 val4, bool b) external;
+    function log(
+        uint256 action,
+        address addr,
+        uint256 val1,
+        uint256 val2,
+        uint256 val3,
+        uint256 val4,
+        bool b
+    ) external;
 
     function resetCurrentInfo() external;
 
-    function setCurrentInfo(address executor, address opponent, uint256 executorMonster, uint256 opponentMonster) external;
+    function setCurrentInfo(
+        address executor,
+        address opponent,
+        uint256 executorMonster,
+        uint256 opponentMonster
+    ) external;
 
     function setMatchId(uint256 matchId) external;
 

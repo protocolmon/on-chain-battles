@@ -2,7 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/MoveV1.sol";
-import { LogActions } from "../../lib/LogActions.sol";
+import {LogActions} from "../../lib/LogActions.sol";
 
 contract CloudCoverMove is MoveV1 {
     uint8 public constant CLOUD_COVER_DURATION = 3;
@@ -20,7 +20,10 @@ contract CloudCoverMove is MoveV1 {
             // attacker is the executor of the elemental wall here
             input.attackerStatusEffects,
             // will count in current turn and next turn
-            IBaseStatusEffectV1.StatusEffectWrapper(cloudCoverEffect, CLOUD_COVER_DURATION)
+            IBaseStatusEffectV1.StatusEffectWrapper(
+                cloudCoverEffect,
+                CLOUD_COVER_DURATION
+            )
         );
 
         logger.log(

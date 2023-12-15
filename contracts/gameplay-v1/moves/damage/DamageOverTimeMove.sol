@@ -5,10 +5,10 @@ import "../../../abstract/MoveV1.sol";
 import "../../lib/ElementalEffectiveness.sol";
 import "../../lib/CriticalHit.sol";
 import "../../lib/BaseDamage.sol";
-import { LogActions } from "../../lib/LogActions.sol";
+import {LogActions} from "../../lib/LogActions.sol";
 
 contract DamageOverTimeMove is MoveV1 {
-    uint8 constant public DAMAGE_OVER_TIME_DURATION = 3;
+    uint8 public constant DAMAGE_OVER_TIME_DURATION = 3;
 
     IBaseStatusEffectV1 public damageOverTimeEffect;
     uint8 public chance;
@@ -27,12 +27,13 @@ contract DamageOverTimeMove is MoveV1 {
         );
 
         uint16 elementalMultiplier;
-        (damage, elementalMultiplier) = ElementalEffectiveness.applyElementalEffectiveness(
-            damage,
-            input.attacker.element,
-            input.attacker.element,
-            input.defender.element
-        );
+        (damage, elementalMultiplier) = ElementalEffectiveness
+            .applyElementalEffectiveness(
+                damage,
+                input.attacker.element,
+                input.attacker.element,
+                input.defender.element
+            );
 
         bool logEffect = false;
         if (isRandomHit(input.randomness, "damageOverTime", chance)) {
@@ -42,7 +43,10 @@ contract DamageOverTimeMove is MoveV1 {
             );
             input.defenderStatusEffects = MoveLibV1.addStatusEffect(
                 input.defenderStatusEffects,
-                IBaseStatusEffectV1.StatusEffectWrapper(damageOverTimeEffect, DAMAGE_OVER_TIME_DURATION)
+                IBaseStatusEffectV1.StatusEffectWrapper(
+                    damageOverTimeEffect,
+                    DAMAGE_OVER_TIME_DURATION
+                )
             );
             logEffect = true;
         }

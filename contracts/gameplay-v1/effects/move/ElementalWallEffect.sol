@@ -2,7 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/BaseMoveStatusEffectWithoutStorageV1.sol";
-import { LogActions } from "../../lib/LogActions.sol";
+import {LogActions} from "../../lib/LogActions.sol";
 
 contract ElementalWallEffect is BaseMoveStatusEffectWithoutStorageV1 {
     IMoveV1 public immutable wallBreakerMove;
@@ -14,10 +14,11 @@ contract ElementalWallEffect is BaseMoveStatusEffectWithoutStorageV1 {
     function applyEffect(
         IMoveV1 move,
         uint256
-    ) external onlyExecutor override returns (IMoveV1 returnMove) {
+    ) external override onlyExecutor returns (IMoveV1 returnMove) {
         returnMove = move;
 
-        bool isHit = move.moveType() == IMoveV1.MoveType.Damage && move != wallBreakerMove;
+        bool isHit = move.moveType() == IMoveV1.MoveType.Damage &&
+            move != wallBreakerMove;
         if (isHit) {
             returnMove = IMoveV1(address(0));
         }

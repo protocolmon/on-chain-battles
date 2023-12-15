@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.21;
 
-import { IBaseStatusEffectV1 } from "../interfaces/IBaseStatusEffectV1.sol";
+import {IBaseStatusEffectV1} from "../interfaces/IBaseStatusEffectV1.sol";
 
 library MoveLibV1 {
     function addStatusEffect(

@@ -3,7 +3,7 @@ pragma solidity ^0.8.21;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "../lib/RandomnessLibV1.sol";
-import { IEventLoggerV1 } from "../interfaces/IEventLoggerV1.sol";
+import {IEventLoggerV1} from "../interfaces/IEventLoggerV1.sol";
 
 abstract contract GamePlayItem {
     /// @dev If we'd use OZ Ownable here we would need to pass owner to every constructor, not worth the extra code here
@@ -14,12 +14,18 @@ abstract contract GamePlayItem {
     IEventLoggerV1 internal logger;
 
     modifier onlyDeployer() {
-        require(msg.sender == deployer, "GamePlayItem: Only deployer can call this function");
+        require(
+            msg.sender == deployer,
+            "GamePlayItem: Only deployer can call this function"
+        );
         _;
     }
 
     modifier onlyExecutor() {
-        require(executors[msg.sender], "GamePlayItem: Only executors can call this function");
+        require(
+            executors[msg.sender],
+            "GamePlayItem: Only executors can call this function"
+        );
         _;
     }
 

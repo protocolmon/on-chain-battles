@@ -2,7 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/MoveV1.sol";
-import { LogActions } from "../../lib/LogActions.sol";
+import {LogActions} from "../../lib/LogActions.sol";
 
 contract AttackAuraMove is MoveV1 {
     IBaseStatusEffectV1 public attackAuraEffect;

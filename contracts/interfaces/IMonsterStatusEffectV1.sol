@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.21;
 
-import { IMonsterV1 } from "./IMoveV1.sol";
+import {IMonsterV1} from "./IMoveV1.sol";
 
 interface IMonsterStatusEffectV1 {
     enum Stage {

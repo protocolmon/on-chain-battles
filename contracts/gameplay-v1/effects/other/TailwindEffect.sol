@@ -2,7 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/BaseMoveStatusEffectWithoutStorageV1.sol";
-import { LogActions } from "../../lib/LogActions.sol";
+import {LogActions} from "../../lib/LogActions.sol";
 
 contract TailwindEffect is BaseMoveStatusEffectWithoutStorageV1 {
     function applyEffect(
@@ -14,7 +14,7 @@ contract TailwindEffect is BaseMoveStatusEffectWithoutStorageV1 {
 
     function applyEffect(
         uint256 randomness
-    ) external onlyExecutor override returns (bool isHit) {
+    ) external override onlyExecutor returns (bool isHit) {
         isHit = isRandomHit(randomness, name(), 40);
 
         logger.log(

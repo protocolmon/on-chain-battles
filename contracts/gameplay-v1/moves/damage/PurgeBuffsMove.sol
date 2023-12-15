@@ -5,7 +5,7 @@ import "../../../abstract/MoveV1.sol";
 import "../../lib/BaseDamage.sol";
 import "../../lib/CriticalHit.sol";
 import "../../lib/ElementalEffectiveness.sol";
-import { LogActions } from "../../lib/LogActions.sol";
+import {LogActions} from "../../lib/LogActions.sol";
 
 contract PurgeBuffsMove is MoveV1 {
     uint8 public immutable chance;
@@ -23,12 +23,13 @@ contract PurgeBuffsMove is MoveV1 {
         );
 
         uint16 elementalMultiplier;
-        (damage, elementalMultiplier) = ElementalEffectiveness.applyElementalEffectiveness(
-            damage,
-            input.attacker.element,
-            getSecondElement(input.attacker.element),
-            input.defender.element
-        );
+        (damage, elementalMultiplier) = ElementalEffectiveness
+            .applyElementalEffectiveness(
+                damage,
+                input.attacker.element,
+                getSecondElement(input.attacker.element),
+                input.defender.element
+            );
 
         bool logEffect = false;
         if (isRandomHit(input.randomness, "purgeBuffs", chance)) {

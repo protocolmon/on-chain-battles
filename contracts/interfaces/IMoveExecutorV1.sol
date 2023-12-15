@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.21;
 
-import { IEventLoggerV1 } from "./IEventLoggerV1.sol";
-import { IMonsterV1 } from "./IMonsterV1.sol";
-import { IMoveV1 } from "./IMoveV1.sol";
-import { IBaseStatusEffectV1 } from "./IBaseStatusEffectV1.sol";
+import {IEventLoggerV1} from "./IEventLoggerV1.sol";
+import {IMonsterV1} from "./IMonsterV1.sol";
+import {IMoveV1} from "./IMoveV1.sol";
+import {IBaseStatusEffectV1} from "./IBaseStatusEffectV1.sol";
 
 interface IMoveExecutorV1 {
     struct WrappedMove {

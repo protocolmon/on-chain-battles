@@ -3,15 +3,15 @@ pragma solidity ^0.8.21;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-import { StringsLibV1 } from "./lib/StringsLibV1.sol";
-import { IMoveV1 } from "./interfaces/IMoveV1.sol";
-import { IMoveExecutorV1 } from "./interfaces/IMoveExecutorV1.sol";
-import { IMonsterV1 } from "./interfaces/IMonsterV1.sol";
-import { IMonsterApiV1 } from "./interfaces/IMonsterApiV1.sol";
-import { IBaseStatusEffectV1 } from "./interfaces/IBaseStatusEffectV1.sol";
-import { IMoveStatusEffectV1 } from "./interfaces/IMoveStatusEffectV1.sol";
+import {StringsLibV1} from "./lib/StringsLibV1.sol";
+import {IMoveV1} from "./interfaces/IMoveV1.sol";
+import {IMoveExecutorV1} from "./interfaces/IMoveExecutorV1.sol";
+import {IMonsterV1} from "./interfaces/IMonsterV1.sol";
+import {IMonsterApiV1} from "./interfaces/IMonsterApiV1.sol";
+import {IBaseStatusEffectV1} from "./interfaces/IBaseStatusEffectV1.sol";
+import {IMoveStatusEffectV1} from "./interfaces/IMoveStatusEffectV1.sol";
 import "./interfaces/IEventLoggerV1.sol";
 
 contract MatchMakerV2 is Initializable, OwnableUpgradeable {
@@ -140,8 +140,12 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         IMonsterApiV1.Monster firstMonster,
         IMonsterApiV1.Monster secondMonster
     ) external {
-        uint256 firstMonsterTokenId = monsterApi.createMonsterByName(firstMonster);
-        uint256 secondMonsterTokenId = monsterApi.createMonsterByName(secondMonster);
+        uint256 firstMonsterTokenId = monsterApi.createMonsterByName(
+            firstMonster
+        );
+        uint256 secondMonsterTokenId = monsterApi.createMonsterByName(
+            secondMonster
+        );
 
         if (accountToMatch[msg.sender] != 0) {
             withdrawFromMatch(accountToMatch[msg.sender]);
@@ -163,7 +167,8 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         uint256 matchId = accountToMatch[msg.sender];
         require(
             matches[matchId].challengerTeam.owner == msg.sender ||
-            matches[matchId].opponentTeam.owner == msg.sender, "MatchMakerV2: not your match"
+                matches[matchId].opponentTeam.owner == msg.sender,
+            "MatchMakerV2: not your match"
         );
         if (matches[matchId].escaped == address(0)) {
             matches[matchId].escaped = msg.sender;
@@ -171,7 +176,10 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         accountToMatch[msg.sender] = 0;
     }
 
-    function commit(uint256 matchId, bytes32 _commit) external payable isInMatch(matchId) {
+    function commit(
+        uint256 matchId,
+        bytes32 _commit
+    ) external payable isInMatch(matchId) {
         Match storage _match = matches[matchId];
         require(
             _match.phase == Phase.Commit,
@@ -222,17 +230,17 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             _match.timeout = block.timestamp + timeout;
         }
 
-        logger.log(
-            LOG_COMMIT,
-            msg.sender,
-            _commit
-        );
+        logger.log(LOG_COMMIT, msg.sender, _commit);
 
         logger.setRound(0);
         logger.setMatchId(0);
     }
 
-    function reveal(uint256 matchId, address move, bytes32 secret) external isInMatch(matchId) {
+    function reveal(
+        uint256 matchId,
+        address move,
+        bytes32 secret
+    ) external isInMatch(matchId) {
         Match storage _match = matches[matchId];
         require(
             _match.phase == Phase.Reveal,
@@ -264,11 +272,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
 
         relevantMove.move = IMoveV1(move);
 
-        logger.log(
-            LOG_REVEAL,
-            msg.sender,
-            address(move)
-        );
+        logger.log(LOG_REVEAL, msg.sender, address(move));
 
         if (
             address(_match.currentChallengerMove.move) != address(0) &&
@@ -297,8 +301,14 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
                 monsters[_match.currentChallengerMove.monsterId],
                 monsters[_match.currentOpponentMove.monsterId],
                 IMoveExecutorV1.WrappedMoves(
-                    IMoveExecutorV1.WrappedMove(_match.currentChallengerMove.move, _match.challengerTeam.owner),
-                    IMoveExecutorV1.WrappedMove(_match.currentOpponentMove.move, _match.opponentTeam.owner)
+                    IMoveExecutorV1.WrappedMove(
+                        _match.currentChallengerMove.move,
+                        _match.challengerTeam.owner
+                    ),
+                    IMoveExecutorV1.WrappedMove(
+                        _match.currentOpponentMove.move,
+                        _match.opponentTeam.owner
+                    )
                 ),
                 challengerInputEffects,
                 opponentInputEffects,
@@ -325,10 +335,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
                     ),
                     _match.round
                 );
-                logger.log(
-                    LOG_MONSTER_DEFEATED,
-                    challengerMonster.tokenId
-                );
+                logger.log(LOG_MONSTER_DEFEATED, challengerMonster.tokenId);
             } else if (opponentMonster.hp == 0) {
                 transitStatusEffects(
                     opponentMonster.tokenId,
@@ -339,10 +346,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
                     ),
                     _match.round
                 );
-                logger.log(
-                    LOG_MONSTER_DEFEATED,
-                    opponentMonster.tokenId
-                );
+                logger.log(LOG_MONSTER_DEFEATED, opponentMonster.tokenId);
             }
 
             // reset moves
@@ -384,29 +388,37 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
 
     function getMatchById(uint256 id) public view returns (MatchView memory) {
         Match storage _match = matches[id];
-        return MatchView(
-            id,
-            _match,
-            monsters[_match.challengerTeam.firstMonsterId],
-            monsters[_match.challengerTeam.secondMonsterId],
-            monsters[_match.opponentTeam.firstMonsterId],
-            monsters[_match.opponentTeam.secondMonsterId],
-            getStatusEffectsViewArray(_match.challengerTeam.firstMonsterId),
-            getStatusEffectsViewArray(_match.challengerTeam.secondMonsterId),
-            getStatusEffectsViewArray(_match.opponentTeam.firstMonsterId),
-            getStatusEffectsViewArray(_match.opponentTeam.secondMonsterId),
-            address(logger)
-        );
+        return
+            MatchView(
+                id,
+                _match,
+                monsters[_match.challengerTeam.firstMonsterId],
+                monsters[_match.challengerTeam.secondMonsterId],
+                monsters[_match.opponentTeam.firstMonsterId],
+                monsters[_match.opponentTeam.secondMonsterId],
+                getStatusEffectsViewArray(_match.challengerTeam.firstMonsterId),
+                getStatusEffectsViewArray(
+                    _match.challengerTeam.secondMonsterId
+                ),
+                getStatusEffectsViewArray(_match.opponentTeam.firstMonsterId),
+                getStatusEffectsViewArray(_match.opponentTeam.secondMonsterId),
+                address(logger)
+            );
     }
 
-    function getMatchByUser(address user) external view returns (MatchView memory) {
+    function getMatchByUser(
+        address user
+    ) external view returns (MatchView memory) {
         uint256 matchId = accountToMatch[user];
         return getMatchById(matchId);
     }
 
     function getStatusEffectsArray(
         uint256 monsterId
-    ) public view returns (IBaseStatusEffectV1.StatusEffectWrapper[] memory effects)
+    )
+        public
+        view
+        returns (IBaseStatusEffectV1.StatusEffectWrapper[] memory effects)
     {
         effects = new IBaseStatusEffectV1.StatusEffectWrapper[](
             statusEffects[monsterId].statusEffectCount
@@ -422,17 +434,11 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
 
     function getStatusEffectsViewArray(
         uint256 monsterId
-    ) public view returns (StatusEffectWrapperView[] memory effects)
-    {
-        IBaseStatusEffectV1.StatusEffectWrapper[] memory statusEffectsArray = getStatusEffectsArray(monsterId);
-        effects = new StatusEffectWrapperView[](
-            statusEffectsArray.length
-        );
-        for (
-            uint256 i = 0;
-            i < statusEffectsArray.length;
-            i++
-        ) {
+    ) public view returns (StatusEffectWrapperView[] memory effects) {
+        IBaseStatusEffectV1.StatusEffectWrapper[]
+            memory statusEffectsArray = getStatusEffectsArray(monsterId);
+        effects = new StatusEffectWrapperView[](statusEffectsArray.length);
+        for (uint256 i = 0; i < statusEffectsArray.length; i++) {
             effects[i] = StatusEffectWrapperView({
                 statusEffect: address(statusEffectsArray[i].statusEffect),
                 remainingTurns: statusEffectsArray[i].remainingTurns,
@@ -464,10 +470,15 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         }
     }
 
-    function join(uint256 mode, uint256 firstMonsterId, uint256 secondMonsterId) internal {
+    function join(
+        uint256 mode,
+        uint256 firstMonsterId,
+        uint256 secondMonsterId
+    ) internal {
         uint256 existingMatchId = accountToMatch[msg.sender];
         require(
-            accountToMatch[msg.sender] == 0 || matches[existingMatchId].escaped != address(0),
+            accountToMatch[msg.sender] == 0 ||
+                matches[existingMatchId].escaped != address(0),
             "MatchMakerV2: already in match"
         );
 
@@ -475,7 +486,11 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         monsters[secondMonsterId] = monsterApi.getMonster(secondMonsterId);
 
         if (queuedTeams[mode].firstMonsterId == 0) {
-            queuedTeams[mode] = Team(msg.sender, firstMonsterId, secondMonsterId);
+            queuedTeams[mode] = Team(
+                msg.sender,
+                firstMonsterId,
+                secondMonsterId
+            );
             return;
         }
 
@@ -540,7 +555,10 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         }
 
         storeStatusEffects(toMonsterId, toEffects);
-        storeStatusEffects(fromMonsterId, new IBaseStatusEffectV1.StatusEffectWrapper[](0));
+        storeStatusEffects(
+            fromMonsterId,
+            new IBaseStatusEffectV1.StatusEffectWrapper[](0)
+        );
     }
 
     function storeStatusEffects(

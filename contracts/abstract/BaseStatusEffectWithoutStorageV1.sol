@@ -2,15 +2,13 @@
 pragma solidity ^0.8.21;
 
 import "./GamePlayItemV1.sol";
-import { IBaseStatusEffectV1 } from "../interfaces/IBaseStatusEffectV1.sol";
+import {IBaseStatusEffectV1} from "../interfaces/IBaseStatusEffectV1.sol";
 
 abstract contract BaseStatusEffectWithoutStorageV1 is
     GamePlayItem,
     IBaseStatusEffectV1
 {
-    function applyEffect(
-        uint256
-    ) external virtual override returns (bool) {
+    function applyEffect(uint256) external virtual override returns (bool) {
         // no nothing, just a base implementation
         return false;
     }

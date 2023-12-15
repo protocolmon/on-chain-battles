@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.21;
 
-import { IMonsterV1 } from "../../interfaces/IMonsterV1.sol";
+import {IMonsterV1} from "../../interfaces/IMonsterV1.sol";
 
 library BaseDamage {
     int16 constant BASE_DAMAGE_FIXED_VALUE = 50;

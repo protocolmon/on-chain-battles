@@ -2,13 +2,13 @@
 pragma solidity ^0.8.21;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import { IEventLoggerV1 } from "./interfaces/IEventLoggerV1.sol";
-import { IMonsterV1 } from "./interfaces/IMonsterV1.sol";
-import { IMoveV1 } from "./interfaces/IMoveV1.sol";
-import { IMoveExecutorV1 } from "./interfaces/IMoveExecutorV1.sol";
-import { IBaseStatusEffectV1 } from "./interfaces/IBaseStatusEffectV1.sol";
-import { IMonsterStatusEffectV1 } from "./interfaces/IMonsterStatusEffectV1.sol";
-import { IMoveStatusEffectV1 } from "./interfaces/IMoveStatusEffectV1.sol";
+import {IEventLoggerV1} from "./interfaces/IEventLoggerV1.sol";
+import {IMonsterV1} from "./interfaces/IMonsterV1.sol";
+import {IMoveV1} from "./interfaces/IMoveV1.sol";
+import {IMoveExecutorV1} from "./interfaces/IMoveExecutorV1.sol";
+import {IBaseStatusEffectV1} from "./interfaces/IBaseStatusEffectV1.sol";
+import {IMonsterStatusEffectV1} from "./interfaces/IMonsterStatusEffectV1.sol";
+import {IMoveStatusEffectV1} from "./interfaces/IMoveStatusEffectV1.sol";
 import "./lib/MathLibV1.sol";
 
 contract MoveExecutorV1 is IMoveExecutorV1, AccessControl {
@@ -227,13 +227,14 @@ contract MoveExecutorV1 is IMoveExecutorV1, AccessControl {
         IMoveV1.MoveInput memory input
     ) internal returns (IMoveV1.MoveInput memory) {
         if (attacker.hp == 0) {
-            return IMoveV1.MoveInput(
-                input.defender,
-                input.attacker,
-                input.defenderStatusEffects,
-                input.attackerStatusEffects,
-                input.randomness
-            );
+            return
+                IMoveV1.MoveInput(
+                    input.defender,
+                    input.attacker,
+                    input.defenderStatusEffects,
+                    input.attackerStatusEffects,
+                    input.randomness
+                );
         }
 
         IMoveV1 moveAfterAttackerEffects = applyMoveStatusEffects(

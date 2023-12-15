@@ -40,32 +40,60 @@ contract EventLoggerV1 is Ownable, IEventLoggerV1 {
         _storeLog(action, data);
     }
 
-    function log(uint256 action, address addr, bool b) external hasMatchId isWriter {
+    function log(
+        uint256 action,
+        address addr,
+        bool b
+    ) external hasMatchId isWriter {
         bytes memory data = abi.encode(addr, b);
         _storeLog(action, data);
     }
 
-    function log(uint256 action, address addr, bytes32 b) external hasMatchId isWriter {
+    function log(
+        uint256 action,
+        address addr,
+        bytes32 b
+    ) external hasMatchId isWriter {
         bytes memory data = abi.encode(addr, b);
         _storeLog(action, data);
     }
 
-    function log(uint256 action, address addr1, address addr2, bool b) external hasMatchId isWriter {
+    function log(
+        uint256 action,
+        address addr1,
+        address addr2,
+        bool b
+    ) external hasMatchId isWriter {
         bytes memory data = abi.encode(addr1, addr2, b);
         _storeLog(action, data);
     }
 
-    function log(uint256 action, address addr1, address addr2) external hasMatchId isWriter {
+    function log(
+        uint256 action,
+        address addr1,
+        address addr2
+    ) external hasMatchId isWriter {
         bytes memory data = abi.encode(addr1, addr2);
         _storeLog(action, data);
     }
 
-    function log(uint256 action, address addr, uint256 val1, uint256 val2) external hasMatchId isWriter {
+    function log(
+        uint256 action,
+        address addr,
+        uint256 val1,
+        uint256 val2
+    ) external hasMatchId isWriter {
         bytes memory data = abi.encode(addr, val1, val2);
         _storeLog(action, data);
     }
 
-    function log(uint256 action, address addr, uint256 val1, uint256 val2, uint256 val3) external hasMatchId isWriter {
+    function log(
+        uint256 action,
+        address addr,
+        uint256 val1,
+        uint256 val2,
+        uint256 val3
+    ) external hasMatchId isWriter {
         bytes memory data = abi.encode(addr, val1, val2, val3);
         _storeLog(action, data);
     }
@@ -155,12 +183,17 @@ contract EventLoggerV1 is Ownable, IEventLoggerV1 {
      * VIEW FUNCTIONS
      *************************************************************************/
 
-    function getLogs(uint256 matchId, uint256 offset) external view returns (Log[] memory) {
+    function getLogs(
+        uint256 matchId,
+        uint256 offset
+    ) external view returns (Log[] memory) {
         if (offset >= logsByMatchId[matchId].length) {
             return new Log[](0); // Return an empty array if the offset is beyond the available logs
         }
 
-        uint256 endIndex = offset + 100 > logsByMatchId[matchId].length ? logsByMatchId[matchId].length : offset + 100;
+        uint256 endIndex = offset + 100 > logsByMatchId[matchId].length
+            ? logsByMatchId[matchId].length
+            : offset + 100;
         uint256 length = endIndex - offset;
         Log[] memory logsToReturn = new Log[](length);
 

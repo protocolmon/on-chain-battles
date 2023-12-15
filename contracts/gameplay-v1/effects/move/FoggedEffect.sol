@@ -2,7 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/BaseMoveStatusEffectWithoutStorageV1.sol";
-import { LogActions } from "../../lib/LogActions.sol";
+import {LogActions} from "../../lib/LogActions.sol";
 
 contract FoggedEffect is BaseMoveStatusEffectWithoutStorageV1 {
     uint8 public constant CHANCE = 30;
@@ -13,7 +13,8 @@ contract FoggedEffect is BaseMoveStatusEffectWithoutStorageV1 {
     ) external onlyExecutor returns (IMoveV1 returnMove) {
         returnMove = move;
 
-        bool isHit = move.moveType() == IMoveV1.MoveType.Damage && isRandomHit(randomness, name(), CHANCE);
+        bool isHit = move.moveType() == IMoveV1.MoveType.Damage &&
+            isRandomHit(randomness, name(), CHANCE);
 
         if (isHit) {
             returnMove = IMoveV1(address(0));

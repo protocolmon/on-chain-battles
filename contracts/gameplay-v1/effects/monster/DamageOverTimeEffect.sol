@@ -3,7 +3,7 @@ pragma solidity ^0.8.21;
 
 import "../../../lib/MathLibV1.sol";
 import "../../../abstract/BaseMonsterStatusEffectWithStorageV1.sol";
-import { LogActions } from "../../lib/LogActions.sol";
+import {LogActions} from "../../lib/LogActions.sol";
 
 contract DamageOverTimeEffect is BaseMonsterStatusEffectWithStorageV1 {
     using MathLibV1 for uint16;

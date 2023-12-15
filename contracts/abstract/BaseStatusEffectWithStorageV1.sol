@@ -2,9 +2,12 @@
 pragma solidity ^0.8.21;
 
 import "./GamePlayItemV1.sol";
-import { IBaseStatusEffectV1 } from "../interfaces/IBaseStatusEffectV1.sol";
+import {IBaseStatusEffectV1} from "../interfaces/IBaseStatusEffectV1.sol";
 
-abstract contract BaseStatusEffectWithStorageV1 is GamePlayItem, IBaseStatusEffectV1 {
+abstract contract BaseStatusEffectWithStorageV1 is
+    GamePlayItem,
+    IBaseStatusEffectV1
+{
     mapping(uint256 => bytes) internal store;
 
     function applyEffect(

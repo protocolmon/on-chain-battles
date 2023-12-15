@@ -2,10 +2,10 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/BaseMonsterStatusEffectWithoutStorageV1.sol";
-import { LogActions } from "../../lib/LogActions.sol";
+import {LogActions} from "../../lib/LogActions.sol";
 
 contract AttackAuraEffect is BaseMonsterStatusEffectWithoutStorageV1 {
-    uint16 constant public BOOST_VALUE = 20;
+    uint16 public constant BOOST_VALUE = 20;
 
     function applyEffect(
         IMonsterV1.Monster memory monster,

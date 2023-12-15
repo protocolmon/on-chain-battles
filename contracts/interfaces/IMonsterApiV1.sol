@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.21;
 
-import { IMonsterV1 } from "./IMonsterV1.sol";
+import {IMonsterV1} from "./IMonsterV1.sol";
 
 interface IMonsterApiV1 {
     enum Monster {

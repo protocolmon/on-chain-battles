@@ -2,7 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../../abstract/BaseMoveStatusEffectWithoutStorageV1.sol";
-import { LogActions } from "../../lib/LogActions.sol";
+import {LogActions} from "../../lib/LogActions.sol";
 
 contract ConfusedEffect is BaseMoveStatusEffectWithoutStorageV1 {
     mapping(address => address) private moveToConfusedMove;
@@ -10,7 +10,7 @@ contract ConfusedEffect is BaseMoveStatusEffectWithoutStorageV1 {
     function applyEffect(
         IMoveV1 move,
         uint256 randomness
-    ) external onlyExecutor override returns (IMoveV1 returnMove) {
+    ) external override onlyExecutor returns (IMoveV1 returnMove) {
         returnMove = move;
 
         bool isHit = move.moveType() == IMoveV1.MoveType.Damage &&

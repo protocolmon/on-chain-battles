@@ -8,7 +8,9 @@ contract UsernamesV1 {
     mapping(string => address) public nameToAddress;
     mapping(address => string) public addressToName;
 
-    function getNames(address[] memory addresses) external view returns (string[] memory) {
+    function getNames(
+        address[] memory addresses
+    ) external view returns (string[] memory) {
         string[] memory names = new string[](addresses.length);
         for (uint256 i = 0; i < addresses.length; i++) {
             names[i] = addressToName[addresses[i]];

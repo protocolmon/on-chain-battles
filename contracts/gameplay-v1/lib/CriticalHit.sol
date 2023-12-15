@@ -2,7 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../../lib/RandomnessLibV1.sol";
-import { IBaseStatusEffectV1 } from "../../interfaces/IBaseStatusEffectV1.sol";
+import {IBaseStatusEffectV1} from "../../interfaces/IBaseStatusEffectV1.sol";
 
 library CriticalHit {
     function applyCriticalHit(
@@ -24,7 +24,8 @@ library CriticalHit {
             }
         }
 
-        isCriticalHit = isCriticalHitDueToEffect ||
+        isCriticalHit =
+            isCriticalHitDueToEffect ||
             RandomnessLibV1.isRandomHit(randomness, "criticalHitNoEffect", 5); // otherwise 5%
 
         returnDamage = isCriticalHit ? (damage * 3) / 2 : damage;
