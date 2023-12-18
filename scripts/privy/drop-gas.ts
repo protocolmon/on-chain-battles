@@ -20,9 +20,9 @@ async function run() {
         const userBalance = await ethers.provider.getBalance(
           user.wallet.address,
         );
-        const desiredBalance = ethers.parseEther("0.02");
+        const desiredBalance = ethers.parseEther("0.03");
 
-        // Check if balance is less than 0.02 ETH
+        // Check if balance is less than 0.03 ETH
         if (userBalance < desiredBalance) {
           const amountToSend = desiredBalance - userBalance;
 
@@ -40,7 +40,7 @@ async function run() {
             }`,
           );
         } else {
-          console.log(`${user.wallet.address} already has 0.02 ETH or more.`);
+          console.log(`${user.wallet.address} already has 0.03 ETH or more.`);
         }
       } catch (error) {
         console.error(`Failed to process for ${user.wallet.address}: ${error}`);
