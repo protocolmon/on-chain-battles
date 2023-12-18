@@ -3,7 +3,6 @@ pragma solidity ^0.8.21;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "../interfaces/IGenericEventLoggerV1.sol";
-import "hardhat/console.sol";
 
 contract GenericEventLoggerV1 is IGenericEventLoggerV1 {
     using Strings for uint256;

@@ -336,7 +336,9 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
                     _match.round
                 );
                 logger.log(LOG_MONSTER_DEFEATED, challengerMonster.tokenId);
-            } else if (opponentMonster.hp == 0) {
+            }
+
+            if (opponentMonster.hp == 0) {
                 transitStatusEffects(
                     opponentMonster.tokenId,
                     getOtherMonsterInTeam(

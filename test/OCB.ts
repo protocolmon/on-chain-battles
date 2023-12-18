@@ -367,7 +367,10 @@ describe("OCB", function () {
 
       expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
 
-      const { healMove } = await deployAttacks(eventLogger, moveExecutorV1);
+      const { healMove, purgeBuffsMove } = await deployAttacks(
+        eventLogger,
+        moveExecutorV1,
+      );
 
       const matchId = 1;
 
@@ -382,10 +385,10 @@ describe("OCB", function () {
       );
 
       // hp should not be higher than initial hp
-      const monster1 = await matchMakerV2.monsters(1);
+      let monster1 = await matchMakerV2.monsters(1);
       expect(monster1.hp).to.equal(BigInt(120));
 
-      const monster2 = await matchMakerV2.monsters(3);
+      let monster2 = await matchMakerV2.monsters(3);
       expect(monster2.hp).to.equal(BigInt(125));
 
       const statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
@@ -393,6 +396,40 @@ describe("OCB", function () {
 
       const statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
       expect(statusEffectsMonster2.length).to.equal(0);
+
+      await runAttacks(
+        matchMakerV2,
+        eventLogger,
+        account2,
+        account3,
+        matchId,
+        await purgeBuffsMove.getAddress(),
+        await purgeBuffsMove.getAddress(),
+      );
+
+      // monsters should have lost hp
+      monster1 = await matchMakerV2.monsters(1);
+      expect(monster1.hp).to.equal(BigInt(87));
+
+      monster2 = await matchMakerV2.monsters(3);
+      expect(monster2.hp).to.equal(BigInt(84));
+
+      await runAttacks(
+        matchMakerV2,
+        eventLogger,
+        account2,
+        account3,
+        matchId,
+        await healMove.getAddress(),
+        await healMove.getAddress(),
+      );
+
+      // monsters should only have gained 20 hp on second heal
+      monster1 = await matchMakerV2.monsters(1);
+      expect(monster1.hp).to.equal(BigInt(107));
+
+      monster2 = await matchMakerV2.monsters(3);
+      expect(monster2.hp).to.equal(BigInt(104));
     });
 
     it("should destroy a cloud cover with purge buffs", async function () {

@@ -3,8 +3,6 @@ pragma solidity ^0.8.21;
 
 import "./interfaces/IRandomnessV1.sol";
 
-import "hardhat/console.sol";
-
 contract MockRandomness is IRandomnessV1 {
     struct Request {
         RequestType requestType;

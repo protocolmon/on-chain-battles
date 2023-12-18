@@ -8,9 +8,9 @@ contract HealMove is MoveWithStorageV1 {
     function execute(
         MoveInput memory input
     ) external onlyExecutor returns (MoveOutput memory) {
-        uint16 prevHeal = bytesToUint16(store[input.attacker.tokenId]);
+        uint16 prevHeal = store[input.attacker.tokenId];
         int16 heal = prevHeal == 0 ? int16(40) : int16(prevHeal) / 2;
-        store[input.attacker.tokenId] = abi.encodePacked(heal);
+        store[input.attacker.tokenId] = uint16(heal);
 
         logger.log(
             uint256(LogActions.Action.Heal),
