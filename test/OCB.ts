@@ -7,8 +7,6 @@ import {
   MoveExecutorV1,
 } from "../typechain-types";
 import { Signer } from "ethers";
-import { decodeAbiParameters } from "viem";
-import { move } from "../typechain-types/contracts/gameplay-v1/effects";
 
 const ONE_MINUTE = 60;
 
@@ -51,6 +49,17 @@ describe("OCB", function () {
       ONE_MINUTE,
     ]);
 
+    const TimeoutMove = await ethers.getContractFactory("TimeoutMove");
+    const timeoutMove = await TimeoutMove.deploy();
+    await eventLogger.addWriter(await timeoutMove.getAddress());
+    await timeoutMove.setLogger(await eventLogger.getAddress());
+    await timeoutMove.addExecutor(await moveExecutorV1.getAddress());
+
+    await (matchMakerV2 as unknown as MatchMakerV2).setTimeout(
+      0,
+      ONE_MINUTE,
+      await timeoutMove.getAddress(),
+    );
     await eventLogger.addWriter(await matchMakerV2.getAddress());
 
     await moveExecutorV1.grantRole(
@@ -260,6 +269,38 @@ describe("OCB", function () {
     );
   }
 
+  async function commitSingleAttack(
+    matchMakerV2: MatchMakerV2,
+    eventLogger: EventLoggerV1,
+    user: Signer,
+    matchId: number | bigint,
+    move: string,
+  ): Promise<any[]> {
+    const events = [];
+
+    events.push(
+      ...(await commit(matchMakerV2, eventLogger, user, matchId, move)),
+    );
+
+    return events;
+  }
+
+  async function revealSingleAttack(
+    matchMakerV2: MatchMakerV2,
+    eventLogger: EventLoggerV1,
+    user: Signer,
+    matchId: number | bigint,
+    move: string,
+  ): Promise<any[]> {
+    const events = [];
+
+    events.push(
+      ...(await reveal(matchMakerV2, eventLogger, user, matchId, move)),
+    );
+
+    return events;
+  }
+
   async function runAttacks(
     matchMakerV2: MatchMakerV2,
     eventLogger: EventLoggerV1,
@@ -267,23 +308,27 @@ describe("OCB", function () {
     player2: Signer,
     matchId: number | bigint,
     move1: string,
-    move2: string,
+    move2?: string,
   ): Promise<any[]> {
     const events = [];
 
     events.push(
       ...(await commit(matchMakerV2, eventLogger, player1, matchId, move1)),
     );
-    events.push(
-      ...(await commit(matchMakerV2, eventLogger, player2, matchId, move2)),
-    );
+    if (move2) {
+      events.push(
+        ...(await commit(matchMakerV2, eventLogger, player2, matchId, move2)),
+      );
+    }
 
     events.push(
       ...(await reveal(matchMakerV2, eventLogger, player1, matchId, move1)),
     );
-    events.push(
-      ...(await reveal(matchMakerV2, eventLogger, player2, matchId, move2)),
-    );
+    if (move2) {
+      events.push(
+        ...(await reveal(matchMakerV2, eventLogger, player2, matchId, move2)),
+      );
+    }
 
     return events;
   }
@@ -865,5 +910,58 @@ describe("OCB", function () {
 
     const match = await matchMakerV2.getMatchByUser(account2.getAddress());
     expect(match[0]).to.equal(matchId);
+  });
+
+  it("should allow support timeouts", async () => {
+    const {
+      account2,
+      account3,
+      matchMakerV2,
+      monsterApiV1,
+      eventLogger,
+      moveExecutorV1,
+    } = await deploy();
+
+    await createMockMonsters(monsterApiV1);
+
+    await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+    await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+
+    const matchId = await matchMakerV2.matchCount();
+
+    const { damageOverTimeAttack } = await deployAttacks(
+      eventLogger,
+      moveExecutorV1,
+    );
+
+    await commitSingleAttack(
+      matchMakerV2,
+      eventLogger,
+      account2,
+      matchId,
+      await damageOverTimeAttack.getAddress(),
+    );
+
+    // let the timeout expire
+    await ethers.provider.send("evm_increaseTime", [ONE_MINUTE + 1]);
+    await ethers.provider.send("evm_mine", []);
+
+    const events = await revealSingleAttack(
+      matchMakerV2,
+      eventLogger,
+      account2,
+      matchId,
+      await damageOverTimeAttack.getAddress(),
+    );
+
+    // expect logs to contain the timeout reveal
+    const revealedMoves = events.filter(
+      (event) =>
+        event?.name === "LogEvent" && event?.args[2] === BigInt(1_000_001),
+    );
+
+    expect(revealedMoves.length).to.equal(2);
+
+    // next we should also check that the reveal is actually a timeout move
   });
 });

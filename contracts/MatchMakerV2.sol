@@ -86,6 +86,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     IMoveExecutorV1 public moveExecutor;
     IEventLoggerV1 public logger;
 
+    /// @dev Not used anymore, just here because of upgrades (removed later)
     uint256 public timeout;
     uint256 public matchCount;
 
@@ -97,6 +98,15 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
 
     /// @dev This allows easier access from the frontend, only one match per owner
     mapping(address => uint256) public accountToMatch;
+
+    /// @dev Mapping of game mode to timeout (for playing different round times)
+    mapping(uint256 => uint256) public modeToTimeout;
+
+    /// @dev In the next version this should be moved into the struct (doing this for upgrades)
+    mapping(uint256 => uint256) public matchToMode;
+
+    /// @dev The move to use for timeouts
+    mapping(uint256 => address) public modeToTimeoutMove;
 
     event WithdrawnBeforeMatch(address indexed player);
 
@@ -187,10 +197,6 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
                 ? "MatchMakerV2: game over"
                 : "MatchMakerV2: not in commit phase"
         );
-        require(
-            _match.timeout > block.timestamp,
-            "MatchMakerV2: commit timeout"
-        );
 
         logger.setMatchId(matchId);
         logger.setRound(_match.round);
@@ -200,26 +206,10 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             ? _match.currentChallengerMove
             : _match.currentOpponentMove;
 
-        bool isFirstMonsterDefeated = isChallenger
-            ? monsters[_match.challengerTeam.firstMonsterId].hp == 0
-            : monsters[_match.opponentTeam.firstMonsterId].hp == 0;
-
-        bool isSecondMonsterDefeated = isChallenger
-            ? monsters[_match.challengerTeam.secondMonsterId].hp == 0
-            : monsters[_match.opponentTeam.secondMonsterId].hp == 0;
-
         require(relevantMove.commit == 0, "MatchMakerV2: already committed");
         relevantMove.commit = _commit;
 
-        if (isFirstMonsterDefeated) {
-            relevantMove.monsterId = isChallenger
-                ? _match.challengerTeam.secondMonsterId
-                : _match.opponentTeam.secondMonsterId;
-        } else {
-            relevantMove.monsterId = isChallenger
-                ? _match.challengerTeam.firstMonsterId
-                : _match.opponentTeam.firstMonsterId;
-        }
+        assignMonstersToMove(_match, relevantMove, isChallenger);
 
         // if both players have committed, move to reveal phase
         if (
@@ -227,7 +217,7 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             _match.currentOpponentMove.commit != 0
         ) {
             _match.phase = Phase.Reveal;
-            _match.timeout = block.timestamp + timeout;
+            _match.timeout = block.timestamp + getTimeout(matchId);
         }
 
         logger.log(LOG_COMMIT, msg.sender, _commit);
@@ -240,43 +230,45 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         uint256 matchId,
         address move,
         bytes32 secret
-    ) external isInMatch(matchId) {
+    ) public isInMatch(matchId) {
         Match storage _match = matches[matchId];
-        require(
-            _match.phase == Phase.Reveal,
-            "MatchMakerV2: not in reveal phase"
-        );
-        require(
-            _match.timeout > block.timestamp,
-            "MatchMakerV2: reveal timeout"
-        );
+
+        // if the round timed out, one player can end it by revealing
+        if (_match.timeout >= block.timestamp) {
+            /// @dev We might not need this check anymore or could potentially refactor it
+            require(
+                _match.phase == Phase.Reveal,
+                "MatchMakerV2: not in reveal phase"
+            );
+        }
 
         logger.setMatchId(matchId);
         logger.setRound(_match.round);
 
-        Move storage relevantMove = _match.challengerTeam.owner == msg.sender
-            ? _match.currentChallengerMove
-            : _match.currentOpponentMove;
+        /// @dev I know this could be done cleaner
+        address timeoutMove = modeToTimeoutMove[matchToMode[matchId]];
+        revealMove(_match, msg.sender, move, secret, timeoutMove);
 
-        require(relevantMove.commit != 0, "MatchMakerV2: not committed");
-        require(
-            address(relevantMove.move) == address(0),
-            "MatchMakerV2: already revealed"
-        );
+        // check if the timeout expired
+        if (_match.timeout < block.timestamp) {
+            Move storage relevantMove = revealMove(
+                _match,
+                getOtherPlayerInMatch(_match, msg.sender),
+                timeoutMove,
+                bytes32(0),
+                timeoutMove
+            );
 
-        // verify if the commit was made with the secret
-        require(
-            keccak256(abi.encodePacked(move, secret)) == relevantMove.commit,
-            "MatchMakerV2: invalid secret"
-        );
-
-        relevantMove.move = IMoveV1(move);
-
-        logger.log(LOG_REVEAL, msg.sender, address(move));
+            assignMonstersToMove(
+                _match,
+                relevantMove,
+                _match.challengerTeam.owner != msg.sender
+            );
+        }
 
         if (
-            address(_match.currentChallengerMove.move) != address(0) &&
-            address(_match.currentOpponentMove.move) != address(0)
+            (address(_match.currentChallengerMove.move) != address(0) &&
+                address(_match.currentOpponentMove.move) != address(0))
         ) {
             IBaseStatusEffectV1.StatusEffectWrapper[]
                 memory challengerInputEffects = getStatusEffectsArray(
@@ -376,12 +368,16 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
                 );
             } else {
                 _match.phase = Phase.Commit;
-                _match.timeout = block.timestamp + timeout;
+                _match.timeout = block.timestamp + getTimeout(matchId);
             }
         }
 
         logger.setRound(0);
         logger.setMatchId(0);
+    }
+
+    function updateBlockTimestamp() external {
+        /// @dev Do nothing but a tx to update the block timestamp
     }
 
     /**************************************************************************
@@ -450,8 +446,24 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     }
 
     /**************************************************************************
+     * OWNER FUNCTIONS
+     *************************************************************************/
+    function setTimeout(
+        uint256 mode,
+        uint256 _timeout,
+        address move
+    ) external onlyOwner {
+        modeToTimeout[mode] = _timeout;
+        modeToTimeoutMove[mode] = move;
+    }
+
+    /**************************************************************************
      * INTERNAL FUNCTIONS
      *************************************************************************/
+
+    function getTimeout(uint256 matchId) internal view returns (uint256) {
+        return modeToTimeout[matchToMode[matchId]];
+    }
 
     function getOtherMonsterInTeam(
         uint256 monsterId,
@@ -469,6 +481,19 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             return teamB.firstMonsterId;
         } else {
             return 0;
+        }
+    }
+
+    function getOtherPlayerInMatch(
+        Match memory _match,
+        address player
+    ) internal view returns (address) {
+        if (_match.challengerTeam.owner == player) {
+            return _match.opponentTeam.owner;
+        } else if (_match.opponentTeam.owner == player) {
+            return _match.challengerTeam.owner;
+        } else {
+            revert("MatchMakerV2: no other player in match");
         }
     }
 
@@ -507,15 +532,73 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
             Move(0, IMoveV1(address(0)), 0),
             Move(0, IMoveV1(address(0)), 0),
             Phase.Commit,
-            block.timestamp + timeout,
+            block.timestamp + modeToTimeout[mode],
             0,
             address(0)
         );
 
+        /// @dev will move to the struct in the next version
+        matchToMode[matchCount] = mode;
         accountToMatch[queuedTeams[mode].owner] = matchCount;
         accountToMatch[msg.sender] = matchCount;
 
         delete queuedTeams[mode];
+    }
+
+    function assignMonstersToMove(
+        Match storage _match,
+        Move storage move,
+        bool isChallenger
+    ) internal {
+        bool isFirstMonsterDefeated = isChallenger
+            ? monsters[_match.challengerTeam.firstMonsterId].hp == 0
+            : monsters[_match.opponentTeam.firstMonsterId].hp == 0;
+
+        bool isSecondMonsterDefeated = isChallenger
+            ? monsters[_match.challengerTeam.secondMonsterId].hp == 0
+            : monsters[_match.opponentTeam.secondMonsterId].hp == 0;
+
+        if (isFirstMonsterDefeated) {
+            move.monsterId = isChallenger
+                ? _match.challengerTeam.secondMonsterId
+                : _match.opponentTeam.secondMonsterId;
+        } else {
+            move.monsterId = isChallenger
+                ? _match.challengerTeam.firstMonsterId
+                : _match.opponentTeam.firstMonsterId;
+        }
+    }
+
+    function revealMove(
+        Match storage _match,
+        address player,
+        address move,
+        bytes32 secret,
+        address timeoutMove
+    ) internal returns (Move storage relevantMove) {
+        relevantMove = _match.challengerTeam.owner == player
+            ? _match.currentChallengerMove
+            : _match.currentOpponentMove;
+
+        require(
+            address(relevantMove.move) == address(0),
+            "MatchMakerV2: already revealed"
+        );
+
+        // only do these checks if the move is not the timeout move
+        if (move != timeoutMove) {
+            require(relevantMove.commit != 0, "MatchMakerV2: not committed");
+            // verify if the commit was made with the secret
+            require(
+                keccak256(abi.encodePacked(move, secret)) ==
+                    relevantMove.commit,
+                "MatchMakerV2: invalid secret"
+            );
+        }
+
+        relevantMove.move = IMoveV1(move);
+
+        logger.log(LOG_REVEAL, player, address(move));
     }
 
     function transitStatusEffects(

@@ -1,7 +1,7 @@
 import { ethers, upgrades } from "hardhat";
 import fs from "fs";
 import { deployContract } from "./utils";
-import { EventLoggerV1 } from "../typechain-types";
+import { EventLoggerV1, MatchMakerV2 } from "../typechain-types";
 
 export async function deployProxy(factoryName: string, args: any = []) {
   console.log(`Deploying ${factoryName}...`);
@@ -42,12 +42,13 @@ async function main() {
 
   output.contracts.EventLoggerV1 = eventLoggerV1Address;
 
-  const { address: matchMakerV2Address } = await deployProxy("MatchMakerV2", [
-    monsterApiV1Address,
-    moveExecutorV1Address,
-    eventLoggerV1Address,
-    86400, // 1 day in seconds
-  ]);
+  const { address: matchMakerV2Address, instance: matchMakerV2 } =
+    await deployProxy("MatchMakerV2", [
+      monsterApiV1Address,
+      moveExecutorV1Address,
+      eventLoggerV1Address,
+      86400, // 1 day in seconds
+    ]);
 
   console.log(`Permitting match maker to use move executor`);
   const moveExecutorV1 = await ethers.getContractAt(
@@ -171,6 +172,22 @@ async function main() {
     confusedWallBreakerMove,
   );
 
+  const { address: timeoutMoveAddress } = await deployContract(
+    "TimeoutMove",
+    [],
+  );
+  const { address: confusedTimeoutMove } = await deployContract(
+    "ConfusedTimeoutMove",
+    [timeoutMoveAddress],
+  );
+  await confusedEffect.addConfusedMove(timeoutMoveAddress, confusedTimeoutMove);
+
+  await (matchMakerV2 as unknown as MatchMakerV2).setTimeout(
+    "1",
+    "62",
+    timeoutMoveAddress,
+  );
+
   output.effects.DamageOverTimeEffect = damageOverTimeEffectAddress;
   output.attacks.DamageOverTimeMove = damageOverTimeMoveAddress;
   output.effects.FoggedEffect = foggedEffectAddress;
@@ -178,6 +195,7 @@ async function main() {
   output.attacks.PurgeBuffsMove = purgeBuffsMoveAddress;
   output.attacks.WallBreakerMove = wallBreakerMoveAddress;
   output.attacks.CleansingShieldMove = cleansingShieldMoveAddress;
+  output.attacks.TimeoutMove = timeoutMoveAddress;
   output.effects.CloudCoverEffect = cloudCoverEffectAddress;
   output.attacks.CloudCoverMove = cloudCoverMoveAddress;
   output.effects.ElementalWallEffect = elementalWallEffectAddress;
@@ -196,6 +214,7 @@ async function main() {
   output.attacks.ConfusedDamageOverTimeMove = confusedDamageOverTimeMove;
   output.attacks.ConfusedPurgeBuffsMove = confusedPurgeBuffsMove;
   output.attacks.ConfusedWallBreakerMove = confusedWallBreakerMove;
+  output.attacks.ConfusedTimeoutMove = confusedTimeoutMove;
 
   // iterate through all attacks and effects and set the event emitter
   for (const key of Object.keys(output.attacks)) {
@@ -214,6 +233,7 @@ async function main() {
     "DamageOverTimeMove",
     "PurgeBuffsMove",
     "WallBreakerMove",
+    "TimeoutMove",
   ]) {
     console.log(`Setting confused executor for ${key}...`);
     const attackContract = await ethers.getContractAt(key, output.attacks[key]);
