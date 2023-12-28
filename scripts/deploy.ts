@@ -1,16 +1,7 @@
 import { ethers, upgrades } from "hardhat";
 import fs from "fs";
-import { deployContract } from "./utils";
+import { deployContract, deployProxy } from "./utils";
 import { EventLoggerV1, MatchMakerV2 } from "../typechain-types";
-
-export async function deployProxy(factoryName: string, args: any = []) {
-  console.log(`Deploying ${factoryName}...`);
-  const Factory = await ethers.getContractFactory(factoryName);
-  const instance = await upgrades.deployProxy(Factory, args);
-  const address = await instance.getAddress();
-  console.log(`${factoryName} deployed to:`, address);
-  return { instance, address };
-}
 
 async function main() {
   const output: any = {

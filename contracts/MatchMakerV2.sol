@@ -91,9 +91,6 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     uint256 public timeout;
     uint256 public matchCount;
 
-    /// @dev New upgrade for leaderboard
-    ILeaderboardV1 public leaderboard;
-
     /// @dev mode => Team
     mapping(uint256 => Team) public queuedTeams;
     mapping(uint256 => Match) public matches;
@@ -111,6 +108,9 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
 
     /// @dev The move to use for timeouts
     mapping(uint256 => address) public modeToTimeoutMove;
+
+    /// @dev New upgrade for leaderboard
+    ILeaderboardV1 public leaderboard;
 
     event WithdrawnBeforeMatch(address indexed player);
 
