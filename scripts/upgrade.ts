@@ -4,7 +4,7 @@ import contracts from "../cli/contracts.generated.json";
 async function main() {
   const MatchMakerV2 = await ethers.getContractFactory("MatchMakerV2");
   const matchMakerV2 = await upgrades.upgradeProxy(
-    contracts.contracts.MatchMakerV2,
+    "0x5D000Aa06746aC118351AAc034e1505dF6820D56",
     MatchMakerV2,
   );
   console.log("MatchMakerV2 upgraded to:", await matchMakerV2.getAddress());

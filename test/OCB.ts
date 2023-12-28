@@ -7,6 +7,7 @@ import {
   MoveExecutorV1,
 } from "../typechain-types";
 import { Signer } from "ethers";
+import { monster } from "../typechain-types/contracts/gameplay-v1/effects";
 
 const ONE_MINUTE = 60;
 
@@ -35,6 +36,9 @@ describe("OCB", function () {
       await owner.getAddress(),
     );
 
+    const UsernamesV1 = await ethers.getContractFactory("UsernamesV1");
+    const userNamesV1 = await UsernamesV1.deploy();
+
     const MonsterApiV1 = await ethers.getContractFactory("MonsterApiV1");
     const monsterApiV1 = await MonsterApiV1.deploy();
 
@@ -48,6 +52,13 @@ describe("OCB", function () {
       await eventLogger.getAddress(),
       ONE_MINUTE,
     ]);
+
+    const LeaderboardV1 = await ethers.getContractFactory("LeaderboardV1");
+    const leaderboardV1 = await upgrades.deployProxy(LeaderboardV1, [
+      await matchMakerV2.getAddress(),
+      await userNamesV1.getAddress(),
+    ]);
+    await matchMakerV2.setLeaderboard(await leaderboardV1.getAddress());
 
     const TimeoutMove = await ethers.getContractFactory("TimeoutMove");
     const timeoutMove = await TimeoutMove.deploy();
@@ -76,6 +87,7 @@ describe("OCB", function () {
       matchMakerV2: matchMakerV2 as unknown as MatchMakerV2,
       monsterApiV1,
       moveExecutorV1,
+      leaderboardV1,
     };
   }
 
@@ -454,6 +466,7 @@ describe("OCB", function () {
 
       // monsters should have lost hp
       monster1 = await matchMakerV2.monsters(1);
+      // @todo this assertion is currently sometimes flaky :(
       expect(monster1.hp).to.equal(BigInt(87));
 
       monster2 = await matchMakerV2.monsters(3);
@@ -963,5 +976,75 @@ describe("OCB", function () {
     expect(revealedMoves.length).to.equal(2);
 
     // next we should also check that the reveal is actually a timeout move
+  });
+
+  it("should count wins in leaderboard", async () => {
+    const {
+      account2,
+      account3,
+      matchMakerV2,
+      monsterApiV1,
+      eventLogger,
+      moveExecutorV1,
+      leaderboardV1,
+    } = await deploy();
+
+    await createMockMonsters(monsterApiV1);
+
+    await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+    await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+
+    const matchId = await matchMakerV2.matchCount();
+
+    const { damageOverTimeAttack } = await deployAttacks(
+      eventLogger,
+      moveExecutorV1,
+    );
+
+    // just do 2 attacks and the opponent should be defeated
+    for (let i = 0; i < 10; i++) {
+      try {
+        await commitSingleAttack(
+          matchMakerV2,
+          eventLogger,
+          account2,
+          matchId,
+          await damageOverTimeAttack.getAddress(),
+        );
+
+        // let the timeout expire
+        await ethers.provider.send("evm_increaseTime", [ONE_MINUTE + 1]);
+        await ethers.provider.send("evm_mine", []);
+
+        await revealSingleAttack(
+          matchMakerV2,
+          eventLogger,
+          account2,
+          matchId,
+          await damageOverTimeAttack.getAddress(),
+        );
+      } catch (err: any) {
+        if (err.message.includes("MatchMakerV2: game over")) {
+          break;
+        }
+
+        throw err;
+      }
+    }
+
+    const playerStatsWinner = await leaderboardV1.playerStats(
+      await account2.getAddress(),
+    );
+    expect(playerStatsWinner.wins).to.equal(BigInt(1));
+    const playerStatsLoser = await leaderboardV1.playerStats(
+      await account3.getAddress(),
+    );
+    expect(playerStatsLoser.losses).to.equal(BigInt(1));
+
+    const playerCount = await leaderboardV1.getPlayerCount();
+    expect(playerCount).to.equal(BigInt(2));
+
+    const allStats = await leaderboardV1.getAllStats(0);
+    expect(allStats.length).to.equal(2);
   });
 });

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.21;
 
-contract UsernamesV1 {
+import "./interfaces/IUsernamesV1.sol";
+
+contract UsernamesV1 is IUsernamesV1 {
     event NameRegistered(string name, address owner);
     event NameUnregistered(string name);
 
@@ -10,7 +12,7 @@ contract UsernamesV1 {
 
     function getNames(
         address[] memory addresses
-    ) external view returns (string[] memory) {
+    ) external view override returns (string[] memory) {
         string[] memory names = new string[](addresses.length);
         for (uint256 i = 0; i < addresses.length; i++) {
             names[i] = addressToName[addresses[i]];

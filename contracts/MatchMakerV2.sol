@@ -12,6 +12,7 @@ import {IMonsterV1} from "./interfaces/IMonsterV1.sol";
 import {IMonsterApiV1} from "./interfaces/IMonsterApiV1.sol";
 import {IBaseStatusEffectV1} from "./interfaces/IBaseStatusEffectV1.sol";
 import {IMoveStatusEffectV1} from "./interfaces/IMoveStatusEffectV1.sol";
+import {ILeaderboardV1} from "./interfaces/ILeaderboardV1.sol";
 import "./interfaces/IEventLoggerV1.sol";
 
 contract MatchMakerV2 is Initializable, OwnableUpgradeable {
@@ -108,6 +109,9 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     /// @dev The move to use for timeouts
     mapping(uint256 => address) public modeToTimeoutMove;
 
+    /// @dev New upgrade for leaderboard
+    ILeaderboardV1 public leaderboard;
+
     event WithdrawnBeforeMatch(address indexed player);
 
     event StatusEffectLog(
@@ -182,6 +186,9 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
         );
         if (matches[matchId].escaped == address(0)) {
             matches[matchId].escaped = msg.sender;
+            if (address(leaderboard) != address(0)) {
+                leaderboard.addEscape(msg.sender);
+            }
         }
         accountToMatch[msg.sender] = 0;
     }
@@ -366,6 +373,18 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
                         ? _match.opponentTeam.owner
                         : _match.challengerTeam.owner
                 );
+
+                if (address(leaderboard) != address(0)) {
+                    if (
+                        monsters[_match.challengerTeam.secondMonsterId].hp == 0
+                    ) {
+                        leaderboard.addWin(_match.opponentTeam.owner);
+                        leaderboard.addLoss(_match.challengerTeam.owner);
+                    } else {
+                        leaderboard.addWin(_match.challengerTeam.owner);
+                        leaderboard.addLoss(_match.opponentTeam.owner);
+                    }
+                }
             } else {
                 _match.phase = Phase.Commit;
                 _match.timeout = block.timestamp + getTimeout(matchId);
@@ -448,6 +467,10 @@ contract MatchMakerV2 is Initializable, OwnableUpgradeable {
     /**************************************************************************
      * OWNER FUNCTIONS
      *************************************************************************/
+    function setLeaderboard(ILeaderboardV1 _leaderboard) external onlyOwner {
+        leaderboard = _leaderboard;
+    }
+
     function setTimeout(
         uint256 mode,
         uint256 _timeout,
