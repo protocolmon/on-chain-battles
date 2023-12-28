@@ -16,3 +16,6 @@ cli/contracts.generated.json
 
 # Might remove from gitignore later
 .openzeppelin
+
+# Not pushing firebase project stuff here
+.firebaserc

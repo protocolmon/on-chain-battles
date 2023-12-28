@@ -42,7 +42,9 @@
     "@openzeppelin/contracts-upgradeable": "^5.0.1",
     "@privy-io/server-auth": "^1.6.0",
     "blessed": "^0.1.81",
-    "erc721a-upgradeable": "^4.2.3"
+    "erc721a-upgradeable": "^4.2.3",
+    "firebase-admin": "^11.11.1",
+    "firebase-functions": "^4.5.0"
   },
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown"
