@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "./interfaces/IUsernamesV1.sol";
 import "./interfaces/ILeaderboardV1.sol";
 
 contract LeaderboardV1 is Initializable, OwnableUpgradeable, ILeaderboardV1 {
@@ -12,7 +13,15 @@ contract LeaderboardV1 is Initializable, OwnableUpgradeable, ILeaderboardV1 {
         uint256 escapes;
     }
 
+    struct PlayerStatsView {
+        PlayerStats stats;
+        address player;
+        string username;
+    }
+
     address public matchMaker;
+
+    IUsernamesV1 public usernames;
 
     /// @dev Player points by address
     mapping(address => PlayerStats) public playerStats;
@@ -30,10 +39,14 @@ contract LeaderboardV1 is Initializable, OwnableUpgradeable, ILeaderboardV1 {
         _disableInitializers();
     }
 
-    function initialize(address _matchMaker) external initializer {
+    function initialize(
+        address _matchMaker,
+        IUsernamesV1 _usernames
+    ) external initializer {
         __Ownable_init(msg.sender);
 
         matchMaker = _matchMaker;
+        usernames = _usernames;
     }
 
     function addEscape(address player) external override onlyMatchMaker {
@@ -54,18 +67,29 @@ contract LeaderboardV1 is Initializable, OwnableUpgradeable, ILeaderboardV1 {
     /// @dev Return the first 100 stats after offset (return the PlayerStats)
     function getAllStats(
         uint256 offset
-    ) external view returns (PlayerStats[] memory) {
+    ) external view returns (PlayerStatsView[] memory) {
         uint256 length = playerList.length;
         uint256 maxLength = offset + 100;
         if (maxLength > length) {
             maxLength = length;
         }
 
-        PlayerStats[] memory stats = new PlayerStats[](maxLength - offset);
+        PlayerStatsView[] memory statsViews = new PlayerStatsView[](
+            maxLength - offset
+        );
+        address[] memory addresses = new address[](maxLength - offset);
         for (uint256 i = offset; i < maxLength; i++) {
-            stats[i - offset] = playerStats[playerList[i]];
+            addresses[i - offset] = playerList[i];
         }
-        return stats;
+
+        string[] memory names = usernames.getNames(addresses);
+
+        for (uint256 i = 0; i < addresses.length; i++) {
+            statsViews[i].stats = playerStats[addresses[i]];
+            statsViews[i].player = addresses[i];
+            statsViews[i].username = names[i];
+        }
+        return statsViews;
     }
 
     function getPlayerCount() external view returns (uint256) {

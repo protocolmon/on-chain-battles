@@ -36,6 +36,9 @@ describe("OCB", function () {
       await owner.getAddress(),
     );
 
+    const UsernamesV1 = await ethers.getContractFactory("UsernamesV1");
+    const userNamesV1 = await UsernamesV1.deploy();
+
     const MonsterApiV1 = await ethers.getContractFactory("MonsterApiV1");
     const monsterApiV1 = await MonsterApiV1.deploy();
 
@@ -53,6 +56,7 @@ describe("OCB", function () {
     const LeaderboardV1 = await ethers.getContractFactory("LeaderboardV1");
     const leaderboardV1 = await upgrades.deployProxy(LeaderboardV1, [
       await matchMakerV2.getAddress(),
+      await userNamesV1.getAddress(),
     ]);
     await matchMakerV2.setLeaderboard(await leaderboardV1.getAddress());
 
