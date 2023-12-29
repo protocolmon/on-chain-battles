@@ -105,4 +105,12 @@ contract LeaderboardV1 is Initializable, OwnableUpgradeable, ILeaderboardV1 {
             playerList.push(player);
         }
     }
+
+    function setMatchMaker(address _matchMaker) external onlyOwner {
+        matchMaker = _matchMaker;
+    }
+
+    function setUsernames(IUsernamesV1 _usernames) external onlyOwner {
+        usernames = _usernames;
+    }
 }
