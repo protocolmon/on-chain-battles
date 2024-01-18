@@ -280,7 +280,7 @@ async function run() {
         });
         await botClient.writeContract(withdrawRequest);
       } catch (err: any) {
-        if (err.includes("MatchMakerV2: not your match")) {
+        if (err.message.includes("MatchMakerV2: not your match")) {
           // just ignore
         } else {
           throw err;
