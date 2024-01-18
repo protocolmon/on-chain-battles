@@ -15,6 +15,7 @@ import { polychainMonstersTestnet } from "./chain";
 import { MatchMakerV2 } from "../typechain-types";
 import contractApiAbi from "../artifacts/contracts/api/ContractApiV1.sol/ContractApiV1.json";
 import matchMakerAbi from "../artifacts/contracts/MatchMakerV2.sol/MatchMakerV2.json";
+import usernamesAbi from "../artifacts/contracts/UsernamesV1.sol/UsernamesV1.json";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -57,6 +58,11 @@ if (!CONTRACT_API_ADDRESS) {
   throw new Error("Missing contract API");
 }
 
+const USERNAMES_ADDRESS = process.env.USERNAMES_ADDRESS as Address;
+if (!USERNAMES_ADDRESS) {
+  throw new Error("Missing usernames address");
+}
+
 const DEFAULT_SLEEP_TIME = 5_000;
 const EMPTY_COMMIT =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -65,6 +71,7 @@ const MAX_INSTANCES = BigInt(process.env.MAX_INSTANCES || 10);
 const MODE = BigInt(process.env.MODE || "2");
 const OFFENSE_ONLY = process.env.OFFENSE_ONLY === "true";
 const SHOULD_WAIT_IN_QUEUE = process.env.SHOULD_WAIT_IN_QUEUE === "true";
+const BOT_USERNAME = process.env.BOT_USERNAME;
 
 const PRIVATE_KEY = process.env.BOT_PRIVATE_KEY as `0x${string}`;
 if (!PRIVATE_KEY) {
@@ -111,6 +118,36 @@ async function run() {
     address: CONTRACT_API_ADDRESS,
     abi: contractApiAbi.abi,
   };
+
+  const baseParamsUsernames = {
+    ...baseParamsMatchMaker,
+    address: USERNAMES_ADDRESS,
+    abi: usernamesAbi.abi,
+  };
+
+  console.info("Checking if bot has username...");
+  const { request: usernameRequest } = await botClient.simulateContract({
+    ...baseParamsUsernames,
+    functionName: "addressToName",
+    args: [botAccount.address],
+  });
+
+  const username = await botClient.readContract(usernameRequest);
+  if ((!username && BOT_USERNAME) || (username && username !== BOT_USERNAME)) {
+    console.info("Bot has no or wrong username, setting...");
+
+    const { request: setUsernameRequest } = await botClient.simulateContract({
+      ...baseParamsUsernames,
+      functionName: "registerName",
+      args: [BOT_USERNAME],
+    });
+
+    await botClient.writeContract(setUsernameRequest);
+  }
+
+  if (username) {
+    console.info(`Bot has username ${username}`);
+  }
 
   console.info("Checking if bot is in match...");
   // first check if the bot is in a match itself
