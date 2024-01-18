@@ -44,7 +44,8 @@
     "blessed": "^0.1.81",
     "erc721a-upgradeable": "^4.2.3",
     "firebase-admin": "^11.11.1",
-    "firebase-functions": "^4.5.0"
+    "firebase-functions": "^4.5.0",
+    "isomorphic-unfetch": "^4.0.2"
   },
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown"

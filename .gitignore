@@ -19,3 +19,5 @@ cli/contracts.generated.json
 
 # Not pushing firebase project stuff here
 .firebaserc
+
+*.bot.json

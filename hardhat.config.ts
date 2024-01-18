@@ -57,7 +57,10 @@ const config: HardhatUserConfig = {
       url: PMON_RPC,
       chainId: PMON_CHAIN_ID,
       ...(process.env.PK && {
-        accounts: [process.env.PK || ""],
+        accounts:
+          typeof process.env.PKS_LIST === "undefined"
+            ? [process.env.PK || ""]
+            : process.env.PKS_LIST.split(","),
       }),
     },
     hardhat: {

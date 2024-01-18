@@ -39,7 +39,7 @@ let activeMonsterId: bigint = BigInt(0);
 let activeOpponentMonsterId: bigint = BigInt(0);
 let statusEffectsByMonsterId: Map<bigint, StatusEffect[]> = new Map();
 
-const GAS_LIMIT = 3_000_000;
+const GAS_LIMIT = 5_000_000;
 const MODE = 104;
 
 const logMonsterStatus = async (

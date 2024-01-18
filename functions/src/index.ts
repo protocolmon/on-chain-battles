@@ -6,6 +6,7 @@ initializeApp();
   return this.toString();
 };
 
+import { airdropGas } from "./scheduled/airdropGas";
 import { discordMatchQueue } from "./scheduled/discordMatchQueue";
 
-export { discordMatchQueue };
+export { airdropGas, discordMatchQueue };
