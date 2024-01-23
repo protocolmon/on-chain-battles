@@ -8,7 +8,8 @@ interface IMoveV1 {
     enum MoveType {
         Boost,
         Damage,
-        Shield
+        Shield,
+        Timeout
     }
 
     struct MoveInput {

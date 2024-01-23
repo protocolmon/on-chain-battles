@@ -18,6 +18,6 @@ contract TimeoutMove is MoveV1 {
     }
 
     function moveType() external pure returns (MoveType) {
-        return MoveType.Damage;
+        return MoveType.Timeout;
     }
 }
