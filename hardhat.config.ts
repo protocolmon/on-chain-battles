@@ -43,6 +43,14 @@ const config: HardhatUserConfig = {
           browserURL: "https://testnet.explorer.sapphire.oasis.dev/",
         },
       },
+      {
+        network: "sapphire",
+        chainId: 23294,
+        urls: {
+          apiURL: "https://explorer.sapphire.oasis.io/api",
+          browserURL: "https://explorer.sapphire.oasis.io",
+        },
+      },
     ],
     apiKey: process.env.ETHERSCAN_API_KEY || "customkey",
   },
@@ -82,6 +90,13 @@ const config: HardhatUserConfig = {
         accounts: [process.env.PK || ""],
       }),
       chainId: 23295,
+    },
+    sapphire: {
+      url: "https://sapphire.oasis.io",
+      ...(process.env.PK && {
+        accounts: [process.env.PK || ""],
+      }),
+      chainId: 23294,
     },
   },
   solidity: {
