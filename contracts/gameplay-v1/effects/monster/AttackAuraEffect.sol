@@ -43,7 +43,7 @@ contract AttackAuraEffect is BaseMonsterStatusEffectWithoutStorageV1 {
     }
 
     function stage() external pure override returns (Stage) {
-        return Stage.INSTANT;
+        return Stage.PRE_MOVE;
     }
 
     function name() external pure override returns (string memory) {

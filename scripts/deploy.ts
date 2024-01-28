@@ -175,7 +175,7 @@ async function main() {
 
   await (matchMakerV2 as unknown as MatchMakerV2).setTimeout(
     "1",
-    "62",
+    "47",
     timeoutMoveAddress,
   );
 

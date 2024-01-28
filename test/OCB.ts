@@ -156,6 +156,21 @@ describe("OCB", function () {
     await speedAuraMove.addExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await speedAuraMove.getAddress());
 
+    const AttackAuraEffect =
+      await ethers.getContractFactory("AttackAuraEffect");
+    const attackAuraEffect = await AttackAuraEffect.deploy();
+    await attackAuraEffect.setLogger(await logger.getAddress());
+    await attackAuraEffect.addExecutor(await moveExecutorV1.getAddress());
+    await logger.addWriter(await attackAuraEffect.getAddress());
+
+    const AttackAuraMove = await ethers.getContractFactory("AttackAuraMove");
+    const attackAuraMove = await AttackAuraMove.deploy(
+      await attackAuraEffect.getAddress(),
+    );
+    await attackAuraMove.setLogger(await logger.getAddress());
+    await attackAuraMove.addExecutor(await moveExecutorV1.getAddress());
+    await logger.addWriter(await attackAuraMove.getAddress());
+
     const HealMove = await ethers.getContractFactory("HealMove");
     const healMove = await HealMove.deploy();
     await healMove.setLogger(await logger.getAddress());
@@ -204,6 +219,7 @@ describe("OCB", function () {
     return {
       damageOverTimeAttack: damageOverTimeMove,
       cloudCoverMove: cloudCoverMove,
+      attackAuraMove: attackAuraMove,
       speedAuraMove: speedAuraMove,
       controlEffect: foggedEffect,
       cloudCoverEffect,
@@ -671,7 +687,7 @@ describe("OCB", function () {
       expect(healEventIndex).to.be.lessThan(damageEventIndex);
     });
 
-    it("should have issues fixed that occured in a battle on 2023-10-20", async () => {
+    it("should support attack auras", async () => {
       const {
         account2,
         account3,
@@ -680,6 +696,79 @@ describe("OCB", function () {
         eventLogger,
         moveExecutorV1,
       } = await deploy();
+
+      const {
+        cloudCoverEffect,
+        purgeBuffsMove,
+        cloudCoverMove,
+        attackAuraMove,
+        speedAuraMove,
+        damageOverTimeAttack,
+        speedAuraEffect,
+        damageOverTimeEffect,
+        controlMove,
+        elementalWallEffect,
+        elementalWallMove,
+      } = await deployAttacks(eventLogger, moveExecutorV1);
+
+      await cloudCoverEffect.setChance(100);
+
+      await matchMakerV2.connect(account2).createAndJoin(0, "10", "6"); // Fernopig + Wavepaw
+      await matchMakerV2.connect(account3).createAndJoin(0, "6", "10"); // Fernopig + Wavepaw
+
+      let [, , monster1Hp, , , speed1] = await matchMakerV2.monsters(1);
+      let [, , monster2Hp, , , speed2] = await matchMakerV2.monsters(3);
+
+      expect(monster1Hp).to.equal(BigInt(120));
+      expect(monster2Hp).to.equal(BigInt(125));
+      expect(speed1).to.equal(BigInt(140));
+      expect(speed2).to.equal(BigInt(125));
+
+      const matchId = 1;
+
+      await runAttacks(
+        matchMakerV2,
+        eventLogger,
+        account2,
+        account3,
+        matchId,
+        await attackAuraMove.getAddress(),
+        await speedAuraMove.getAddress(),
+      );
+
+      let statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
+      expect(statusEffectsMonster1.length).to.equal(1);
+
+      let statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
+      expect(statusEffectsMonster2.length).to.equal(1);
+
+      // no damage yet
+      [, , monster1Hp] = await matchMakerV2.monsters(1);
+      [, , monster2Hp] = await matchMakerV2.monsters(3);
+      expect(monster1Hp).to.equal(BigInt(120));
+      expect(monster2Hp).to.equal(BigInt(125));
+
+      // attack with the player who has the attack aura
+      await runAttacks(
+        matchMakerV2,
+        eventLogger,
+        account2,
+        account3,
+        matchId,
+        await purgeBuffsMove.getAddress(),
+        await speedAuraMove.getAddress(),
+      );
+
+      // damage caused (extra 20 from attack aura)
+      [, , monster1Hp] = await matchMakerV2.monsters(1);
+      [, , monster2Hp] = await matchMakerV2.monsters(3);
+      expect(monster1Hp).to.equal(BigInt(120));
+      expect(monster2Hp).to.equal(BigInt(57));
+    });
+
+    it("should have issues fixed that occured in a battle on 2023-10-20", async () => {
+      const { account2, account3, matchMakerV2, eventLogger, moveExecutorV1 } =
+        await deploy();
 
       const {
         cloudCoverEffect,

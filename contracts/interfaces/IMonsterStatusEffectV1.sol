@@ -5,7 +5,7 @@ import {IMonsterV1} from "./IMoveV1.sol";
 
 interface IMonsterStatusEffectV1 {
     enum Stage {
-        INSTANT, // right after execution
+        INSTANT, // right after execution, todo can be removed
         PRE_MOVE,
         POST_MOVE
     }

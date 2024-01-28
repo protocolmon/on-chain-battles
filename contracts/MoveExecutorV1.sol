@@ -262,11 +262,17 @@ contract MoveExecutorV1 is IMoveExecutorV1, AccessControl {
             output = moveAfterDefenderEffects.execute(input);
         }
 
+        input.attacker = rewindMonsterStatusEffects(
+            input.attacker,
+            input.attackerStatusEffects,
+            input.randomness
+        );
+
         input.attacker = applyMonsterStatusEffects(
             attacker,
             output.attackerStatusEffects,
             input.randomness,
-            IMonsterStatusEffectV1.Stage.INSTANT
+            IMonsterStatusEffectV1.Stage.PRE_MOVE
         );
 
         input.attacker.hp = input.attacker.hp.sub(output.damageAttacker);
