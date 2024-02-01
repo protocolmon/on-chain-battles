@@ -1,4 +1,4 @@
-import { ethers, upgrades } from "hardhat";
+import { ethers, network, upgrades } from "hardhat";
 import fs from "fs";
 import { deployContract, deployProxy } from "./utils";
 import { EventLoggerV1, MatchMakerV2 } from "../typechain-types";
@@ -255,7 +255,7 @@ async function main() {
 
   // Writing to a JSON file
   fs.writeFileSync(
-    `${__dirname}/../cli/contracts.generated.json`,
+    `${__dirname}/../cli/contracts.generated.${network.name}.json`,
     JSON.stringify(output, null, 2),
   );
 
