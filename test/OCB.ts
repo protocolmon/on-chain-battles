@@ -394,7 +394,7 @@ describe("OCB", function () {
       await createMockMonsters(monsterApiV1);
     });
 
-    it.only("should should decrease the strength of defense auras", async function () {
+    it("should should decrease the strength of defense auras", async function () {
       const {
         account2,
         account3,
