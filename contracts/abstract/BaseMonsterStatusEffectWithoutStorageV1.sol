@@ -12,10 +12,16 @@ abstract contract BaseMonsterStatusEffectWithoutStorageV1 is
         return 0;
     }
 
+    function extraData(
+        uint256
+    ) external view virtual override returns (uint256) {
+        return 0;
+    }
+
     function rewindEffect(
         IMonsterV1.Monster memory monster,
         uint256 randomness
-    ) external view virtual returns (IMonsterV1.Monster memory) {
+    ) external virtual returns (IMonsterV1.Monster memory) {
         return monster;
     }
 

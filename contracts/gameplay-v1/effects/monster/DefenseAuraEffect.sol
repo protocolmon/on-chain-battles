@@ -5,13 +5,18 @@ import "../../../abstract/BaseMonsterStatusEffectWithoutStorageV1.sol";
 import {LogActions} from "../../lib/LogActions.sol";
 
 contract DefenseAuraEffect is BaseMonsterStatusEffectWithoutStorageV1 {
-    uint16 public constant BOOST_VALUE = 20;
+    uint16 public constant BASE_BOOST_VALUE = 20;
+
+    /// @dev How often the effect has been applied
+    uint16 private applications;
 
     function applyEffect(
         IMonsterV1.Monster memory monster,
         uint256
-    ) external view returns (IMonsterV1.Monster memory) {
-        monster.defense += BOOST_VALUE;
+    ) external returns (IMonsterV1.Monster memory) {
+        applications++;
+
+        monster.defense += BASE_BOOST_VALUE / applications;
 
         return monster;
     }
@@ -19,14 +24,22 @@ contract DefenseAuraEffect is BaseMonsterStatusEffectWithoutStorageV1 {
     function rewindEffect(
         IMonsterV1.Monster memory monster,
         uint256
-    ) external view override returns (IMonsterV1.Monster memory) {
-        monster.defense -= BOOST_VALUE;
+    ) external override returns (IMonsterV1.Monster memory) {
+        monster.defense -= BASE_BOOST_VALUE;
+
+        applications--;
 
         return monster;
     }
 
     function extraData() external view override returns (uint256) {
-        return BOOST_VALUE;
+        return BASE_BOOST_VALUE;
+    }
+
+    function extraData(
+        uint256 _applications
+    ) external view override returns (uint256) {
+        return BASE_BOOST_VALUE / _applications;
     }
 
     function group()

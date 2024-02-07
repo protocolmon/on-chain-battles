@@ -22,13 +22,22 @@ contract DefenseAuraMove is MoveV1 {
             )
         );
 
+        uint8 numberOfDefenseAuras = 0;
+        for (uint8 i = 0; i < input.attackerStatusEffects.length; i++) {
+            if (
+                input.attackerStatusEffects[i].statusEffect == defenseAuraEffect
+            ) {
+                numberOfDefenseAuras++;
+            }
+        }
+
         // auras are a special case we we log the apply right after the add because the frontend must
         // show the apply only once
         logger.log(
             uint256(LogActions.Action.ApplyMonsterStatusEffect),
             address(this),
             input.attacker.tokenId,
-            defenseAuraEffect.extraData()
+            defenseAuraEffect.extraData(numberOfDefenseAuras)
         );
 
         return

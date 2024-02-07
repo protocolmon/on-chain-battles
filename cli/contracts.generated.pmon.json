@@ -1,0 +1,42 @@
+{
+  "contracts": {
+    "ContractApiV1": "0x9DF6262d5307668A29bF36fbc27FbD19ABc497E5",
+    "UsernamesV1": "0x00B0E9f222e6042780bea3dAe452aac352637596",
+    "MonsterApiV1": "0xDCd2Ed3AF8dFF0D93EeeBF994aE4222d7F3a1bc6",
+    "MoveExecutorV1": "0x2FBEfb89e7d0Fd3053d34Db0B2Ac5a6f389AEBF2",
+    "EventLoggerV1": "0xCcc25b56f83c3cEFdFeB0b2E5d1cea9C9Bd40BeF",
+    "LeaderboardV1": "0x129f86D8cF1Ca65624949da415be6348a5a1BB17",
+    "MatchMakerV2": "0x20524aa9c511e5fB863d38299B6f38BB36493788"
+  },
+  "attacks": {
+    "DamageOverTimeMove": "0x2432E1f14006D9a02520fBf1fB3BE5fFb4887e9B",
+    "ControlMove": "0x2ed1fd4037D24c6Db1eA9fE8Bce50426195Cd97A",
+    "PurgeBuffsMove": "0xb6783Ab0D593376D851A6d71cf8627b18103927D",
+    "WallBreakerMove": "0x4a78DB627D08F520fE12A8413055Cb379DF7D9f6",
+    "CleansingShieldMove": "0x93e6a73d07f916E622C17fFDC1fc3731D43FC530",
+    "TimeoutMove": "0x1DC1C351629A62cd407a83a605F8B3Fb35dF04c8",
+    "CloudCoverMove": "0x5c01b53a93598fcB112545f272E6B9D6167985E3",
+    "ElementalWallMove": "0xb6FAeCB450B18d59951350784718ABb707b9542E",
+    "TailwindMove": "0x4F639c3985c3604de6d6C8Cc3C180Fc5b2094297",
+    "AttackAuraMove": "0x7BFAdE7B9B75d502479BbFcCa55027a2Bdda805F",
+    "DefenseAuraMove": "0x5913CBB0e1750B2300DdE516fA7cc6616215961A",
+    "HealMove": "0x33E4a0d23d35126A33BddCED582dB8EB12149877",
+    "SpeedAuraMove": "0x009873ba975632Eaa41846Da604f5aD6dDb634A9",
+    "ConfusedControlMove": "0xe1209072426aeAb86208AB5ECe8dc5CA0bcdF9A4",
+    "ConfusedDamageOverTimeMove": "0xc0EE712Aa1647A555D671C01497749102c6cE060",
+    "ConfusedPurgeBuffsMove": "0x0e10ee740A62d380eE679C938ba9A433C6991Ac9",
+    "ConfusedWallBreakerMove": "0x88C63785c668BE3718aeE85ea0676be790F11f5E",
+    "ConfusedTimeoutMove": "0xbA7D182b275105880e778f86A59DF69c0B1e6216"
+  },
+  "effects": {
+    "DamageOverTimeEffect": "0xeBa05a89Dbc108A9089E9b6C51821126066b9976",
+    "FoggedEffect": "0x4Fec09BD82428958A88bA7c70058e92F6332bed9",
+    "CloudCoverEffect": "0xC7B8414c6e215048da615c2590e0646cc21b6D2f",
+    "ElementalWallEffect": "0xeF2C95c7834a04d3d69Db6Da661529A553594661",
+    "TailwindEffect": "0x1A7E47C3CE170127eCa3B60c6a5f99355E3E7b80",
+    "AttackAuraEffect": "0xcAEabf790DB0b1372b6F755323B9e1D99a35EE71",
+    "DefenseAuraEffect": "0xd6d9674fab8edFaBCc0116e66e8e2718DDfEC667",
+    "SpeedAuraEffect": "0x4Ca35059537872Bf8f70c26C2F435cFf5A9fb352",
+    "ConfusedEffect": "0xb46E0DCB1058Bf926Bbe262FF2ECb5503a0d6c5D"
+  }
+}

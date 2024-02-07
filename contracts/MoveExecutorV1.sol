@@ -333,7 +333,7 @@ contract MoveExecutorV1 is IMoveExecutorV1, AccessControl {
         IMonsterV1.Monster memory monster,
         IBaseStatusEffectV1.StatusEffectWrapper[] memory statusEffects,
         uint256 randomness
-    ) internal view returns (IMonsterV1.Monster memory modifiedMon) {
+    ) internal returns (IMonsterV1.Monster memory modifiedMon) {
         modifiedMon = monster;
 
         for (uint256 i = 0; i < statusEffects.length; i++) {

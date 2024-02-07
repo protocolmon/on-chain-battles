@@ -22,6 +22,9 @@ interface IBaseStatusEffectV1 {
 
     function extraData() external view returns (uint256);
 
+    /// @dev Accepts a generic uint256 payload
+    function extraData(uint256 payload) external view returns (uint256);
+
     function group() external view returns (StatusEffectGroup);
 
     /// @dev Indicates if only one of the same status effect can be applied

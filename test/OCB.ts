@@ -8,6 +8,7 @@ import {
 } from "../typechain-types";
 import { Signer } from "ethers";
 import { monster } from "../typechain-types/contracts/gameplay-v1/effects";
+import { decodeEvent } from "./events";
 
 const ONE_MINUTE = 60;
 
@@ -84,7 +85,7 @@ describe("OCB", function () {
       account2,
       account3,
       eventLogger,
-      matchMakerV2: matchMakerV3 as unknown as MatchMakerV3,
+      matchMaker: matchMakerV3 as unknown as MatchMakerV3,
       monsterApiV1,
       moveExecutorV1,
       leaderboardV1,
@@ -171,6 +172,21 @@ describe("OCB", function () {
     await attackAuraMove.addExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await attackAuraMove.getAddress());
 
+    const DefenseAuraEffect =
+      await ethers.getContractFactory("DefenseAuraEffect");
+    const defenseAuraEffect = await DefenseAuraEffect.deploy();
+    await defenseAuraEffect.setLogger(await logger.getAddress());
+    await defenseAuraEffect.addExecutor(await moveExecutorV1.getAddress());
+    await logger.addWriter(await defenseAuraEffect.getAddress());
+
+    const DefenseAuraMove = await ethers.getContractFactory("DefenseAuraMove");
+    const defenseAuraMove = await DefenseAuraMove.deploy(
+      await defenseAuraEffect.getAddress(),
+    );
+    await defenseAuraMove.setLogger(await logger.getAddress());
+    await defenseAuraMove.addExecutor(await moveExecutorV1.getAddress());
+    await logger.addWriter(await defenseAuraMove.getAddress());
+
     const HealMove = await ethers.getContractFactory("HealMove");
     const healMove = await HealMove.deploy();
     await healMove.setLogger(await logger.getAddress());
@@ -220,8 +236,10 @@ describe("OCB", function () {
       damageOverTimeAttack: damageOverTimeMove,
       cloudCoverMove: cloudCoverMove,
       attackAuraMove: attackAuraMove,
+      defenseAuraMove: defenseAuraMove,
       speedAuraMove: speedAuraMove,
       controlEffect: foggedEffect,
+      defenseAuraEffect,
       cloudCoverEffect,
       healMove,
       purgeBuffsMove,
@@ -266,13 +284,13 @@ describe("OCB", function () {
   }
 
   async function commit(
-    matchMakerV2: MatchMakerV3,
+    matchMaker: MatchMakerV3,
     eventLogger: EventLoggerV1,
     user: Signer,
     matchId: number | bigint,
     move: string,
   ): Promise<any[]> {
-    const tx = await matchMakerV2
+    const tx = await matchMaker
       .connect(user)
       .commit(matchId, getCommitHash(move));
     const receipt = await tx.wait();
@@ -282,23 +300,21 @@ describe("OCB", function () {
   }
 
   async function reveal(
-    matchMakerV2: MatchMakerV3,
+    matchMaker: MatchMakerV3,
     eventLogger: EventLoggerV1,
     user: Signer,
     matchId: number | bigint,
     move: string,
   ): Promise<any[]> {
-    const tx = await matchMakerV2
+    const tx = await matchMaker
       .connect(user)
       .reveal(matchId, move, ethers.encodeBytes32String("secret"));
     const receipt = await tx.wait();
-    return receipt!.logs.map((log) =>
-      eventLogger.interface.parseLog(log as unknown as any),
-    );
+    return receipt!.logs.map((log: any) => eventLogger.interface.parseLog(log));
   }
 
   async function commitSingleAttack(
-    matchMakerV2: MatchMakerV3,
+    matchMaker: MatchMakerV3,
     eventLogger: EventLoggerV1,
     user: Signer,
     matchId: number | bigint,
@@ -307,14 +323,14 @@ describe("OCB", function () {
     const events = [];
 
     events.push(
-      ...(await commit(matchMakerV2, eventLogger, user, matchId, move)),
+      ...(await commit(matchMaker, eventLogger, user, matchId, move)),
     );
 
     return events;
   }
 
   async function revealSingleAttack(
-    matchMakerV2: MatchMakerV3,
+    matchMaker: MatchMakerV3,
     eventLogger: EventLoggerV1,
     user: Signer,
     matchId: number | bigint,
@@ -323,14 +339,14 @@ describe("OCB", function () {
     const events = [];
 
     events.push(
-      ...(await reveal(matchMakerV2, eventLogger, user, matchId, move)),
+      ...(await reveal(matchMaker, eventLogger, user, matchId, move)),
     );
 
     return events;
   }
 
   async function runAttacks(
-    matchMakerV2: MatchMakerV3,
+    matchMaker: MatchMakerV3,
     eventLogger: EventLoggerV1,
     player1: Signer,
     player2: Signer,
@@ -343,21 +359,21 @@ describe("OCB", function () {
 
     if (useCommitReveal) {
       events.push(
-        ...(await commit(matchMakerV2, eventLogger, player1, matchId, move1)),
+        ...(await commit(matchMaker, eventLogger, player1, matchId, move1)),
       );
       if (move2) {
         events.push(
-          ...(await commit(matchMakerV2, eventLogger, player2, matchId, move2)),
+          ...(await commit(matchMaker, eventLogger, player2, matchId, move2)),
         );
       }
     }
 
     events.push(
-      ...(await reveal(matchMakerV2, eventLogger, player1, matchId, move1)),
+      ...(await reveal(matchMaker, eventLogger, player1, matchId, move1)),
     );
     if (move2) {
       events.push(
-        ...(await reveal(matchMakerV2, eventLogger, player2, matchId, move2)),
+        ...(await reveal(matchMaker, eventLogger, player2, matchId, move2)),
       );
     }
 
@@ -366,8 +382,8 @@ describe("OCB", function () {
 
   describe("V1", function () {
     it("should deploy", async function () {
-      const { matchMakerV2, monsterApiV1, moveExecutorV1 } = await deploy();
-      expect(await matchMakerV2.getAddress()).to.not.equal(0);
+      const { matchMaker, monsterApiV1, moveExecutorV1 } = await deploy();
+      expect(await matchMaker.getAddress()).to.not.equal(0);
       expect(await moveExecutorV1.getAddress()).to.not.equal(0);
       expect(await monsterApiV1.getAddress()).to.not.equal(0);
     });
@@ -378,22 +394,93 @@ describe("OCB", function () {
       await createMockMonsters(monsterApiV1);
     });
 
-    it("should allow both players to apply a speed boost", async function () {
+    it.only("should should decrease the strength of defense auras", async function () {
       const {
         account2,
         account3,
         monsterApiV1,
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         moveExecutorV1,
       } = await deploy();
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+      await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+      await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-      expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
+      expect(await matchMaker.matchCount()).to.equal(BigInt(1));
+
+      const { defenseAuraMove } = await deployAttacks(
+        eventLogger,
+        moveExecutorV1,
+      );
+
+      const matchId = 1;
+
+      const logs = await runAttacks(
+        matchMaker,
+        eventLogger,
+        account2,
+        account3,
+        matchId,
+        await defenseAuraMove.getAddress(),
+        await defenseAuraMove.getAddress(),
+      );
+
+      const decodedLogs = logs.map((log) =>
+        decodeEvent(log.args[0], log.args[2], log.args[3], log.args[4]),
+      );
+
+      const defenseAuraEvents = decodedLogs.filter(
+        (event) => event?.name === "ApplyMonsterStatusEffectLog",
+      );
+
+      expect(defenseAuraEvents.length).to.equal(2);
+      for (const event of defenseAuraEvents) {
+        expect(event?.extraData).to.equal(BigInt(20));
+      }
+
+      const moreLogs = await runAttacks(
+        matchMaker,
+        eventLogger,
+        account2,
+        account3,
+        matchId,
+        await defenseAuraMove.getAddress(),
+        await defenseAuraMove.getAddress(),
+      );
+
+      const moreDecodedLogs = moreLogs.map((log) =>
+        decodeEvent(log.args[0], log.args[2], log.args[3], log.args[4]),
+      );
+
+      const moreDefenseAuraEvents = moreDecodedLogs.filter(
+        (event) => event?.name === "ApplyMonsterStatusEffectLog",
+      );
+
+      expect(moreDefenseAuraEvents.length).to.equal(2);
+      for (const event of moreDefenseAuraEvents) {
+        expect(event?.extraData).to.equal(BigInt(10));
+      }
+    });
+
+    it("should allow both players to apply a speed boost", async function () {
+      const {
+        account2,
+        account3,
+        monsterApiV1,
+        matchMaker,
+        eventLogger,
+        moveExecutorV1,
+      } = await deploy();
+
+      await createMockMonsters(monsterApiV1);
+
+      await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+      await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+
+      expect(await matchMaker.matchCount()).to.equal(BigInt(1));
 
       const { speedAuraMove } = await deployAttacks(
         eventLogger,
@@ -403,7 +490,7 @@ describe("OCB", function () {
       const matchId = 1;
 
       await runAttacks(
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         account2,
         account3,
@@ -413,16 +500,16 @@ describe("OCB", function () {
       );
 
       // boost should not be persisted
-      const monster1 = await matchMakerV2.monsters(1);
+      const monster1 = await matchMaker.monsters(1);
       expect(monster1.speed).to.equal(BigInt(120));
 
-      const monster2 = await matchMakerV2.monsters(3);
+      const monster2 = await matchMaker.monsters(3);
       expect(monster2.speed).to.equal(BigInt(125));
 
-      const statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
+      const statusEffectsMonster1 = await matchMaker.getStatusEffectsArray(1);
       expect(statusEffectsMonster1.length).to.equal(1);
 
-      const statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
+      const statusEffectsMonster2 = await matchMaker.getStatusEffectsArray(3);
       expect(statusEffectsMonster2.length).to.equal(1);
     });
 
@@ -431,17 +518,17 @@ describe("OCB", function () {
         account2,
         account3,
         monsterApiV1,
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         moveExecutorV1,
       } = await deploy();
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+      await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+      await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-      expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
+      expect(await matchMaker.matchCount()).to.equal(BigInt(1));
 
       const { healMove, purgeBuffsMove } = await deployAttacks(
         eventLogger,
@@ -451,7 +538,7 @@ describe("OCB", function () {
       const matchId = 1;
 
       await runAttacks(
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         account2,
         account3,
@@ -461,20 +548,20 @@ describe("OCB", function () {
       );
 
       // hp should not be higher than initial hp
-      let monster1 = await matchMakerV2.monsters(1);
+      let monster1 = await matchMaker.monsters(1);
       expect(monster1.hp).to.equal(BigInt(120));
 
-      let monster2 = await matchMakerV2.monsters(3);
+      let monster2 = await matchMaker.monsters(3);
       expect(monster2.hp).to.equal(BigInt(125));
 
-      const statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
+      const statusEffectsMonster1 = await matchMaker.getStatusEffectsArray(1);
       expect(statusEffectsMonster1.length).to.equal(0);
 
-      const statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
+      const statusEffectsMonster2 = await matchMaker.getStatusEffectsArray(3);
       expect(statusEffectsMonster2.length).to.equal(0);
 
       await runAttacks(
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         account2,
         account3,
@@ -484,15 +571,15 @@ describe("OCB", function () {
       );
 
       // monsters should have lost hp
-      monster1 = await matchMakerV2.monsters(1);
+      monster1 = await matchMaker.monsters(1);
       // @todo this assertion is currently sometimes flaky :(
       expect(monster1.hp).to.equal(BigInt(87));
 
-      monster2 = await matchMakerV2.monsters(3);
+      monster2 = await matchMaker.monsters(3);
       expect(monster2.hp).to.equal(BigInt(84));
 
       await runAttacks(
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         account2,
         account3,
@@ -502,10 +589,10 @@ describe("OCB", function () {
       );
 
       // monsters should only have gained 20 hp on second heal
-      monster1 = await matchMakerV2.monsters(1);
+      monster1 = await matchMaker.monsters(1);
       expect(monster1.hp).to.equal(BigInt(107));
 
-      monster2 = await matchMakerV2.monsters(3);
+      monster2 = await matchMaker.monsters(3);
       expect(monster2.hp).to.equal(BigInt(104));
     });
 
@@ -514,17 +601,17 @@ describe("OCB", function () {
         account2,
         account3,
         monsterApiV1,
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         moveExecutorV1,
       } = await deploy();
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+      await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+      await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-      expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
+      expect(await matchMaker.matchCount()).to.equal(BigInt(1));
 
       const { cloudCoverMove, purgeBuffsMove } = await deployAttacks(
         eventLogger,
@@ -534,7 +621,7 @@ describe("OCB", function () {
       const matchId = 1;
 
       await runAttacks(
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         account2,
         account3,
@@ -543,10 +630,10 @@ describe("OCB", function () {
         await purgeBuffsMove.getAddress(),
       );
 
-      const statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
+      const statusEffectsMonster1 = await matchMaker.getStatusEffectsArray(1);
       expect(statusEffectsMonster1.length).to.equal(0);
 
-      const statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(4);
+      const statusEffectsMonster2 = await matchMaker.getStatusEffectsArray(4);
       expect(statusEffectsMonster2.length).to.equal(0);
     });
 
@@ -555,17 +642,17 @@ describe("OCB", function () {
         account2,
         account3,
         monsterApiV1,
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         moveExecutorV1,
       } = await deploy();
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+      await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+      await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-      expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
+      expect(await matchMaker.matchCount()).to.equal(BigInt(1));
 
       const { cloudCoverMove } = await deployAttacks(
         eventLogger,
@@ -575,7 +662,7 @@ describe("OCB", function () {
       const matchId = 1;
 
       await runAttacks(
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         account2,
         account3,
@@ -584,10 +671,10 @@ describe("OCB", function () {
         await cloudCoverMove.getAddress(),
       );
 
-      const statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
+      const statusEffectsMonster1 = await matchMaker.getStatusEffectsArray(1);
       expect(statusEffectsMonster1.length).to.equal(1);
 
-      const statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
+      const statusEffectsMonster2 = await matchMaker.getStatusEffectsArray(3);
       expect(statusEffectsMonster2.length).to.equal(1);
     });
 
@@ -596,17 +683,17 @@ describe("OCB", function () {
         account2,
         account3,
         monsterApiV1,
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         moveExecutorV1,
       } = await deploy();
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+      await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+      await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-      expect(await matchMakerV2.matchCount()).to.equal(BigInt(1));
+      expect(await matchMaker.matchCount()).to.equal(BigInt(1));
 
       const { damageOverTimeAttack } = await deployAttacks(
         eventLogger,
@@ -618,7 +705,7 @@ describe("OCB", function () {
       while (true) {
         try {
           await runAttacks(
-            matchMakerV2,
+            matchMaker,
             eventLogger,
             account2,
             account3,
@@ -642,7 +729,7 @@ describe("OCB", function () {
       const {
         account2,
         account3,
-        matchMakerV2,
+        matchMaker,
         monsterApiV1,
         eventLogger,
         moveExecutorV1,
@@ -650,17 +737,17 @@ describe("OCB", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-      await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+      await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+      await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-      const matchId = await matchMakerV2.matchCount();
+      const matchId = await matchMaker.matchCount();
 
       const { healMove, damageOverTimeAttack, speedAuraMove, cloudCoverMove } =
         await deployAttacks(eventLogger, moveExecutorV1);
 
       // lets run a speed aura first to make player 2 faster than player 1
       await runAttacks(
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         account2,
         account3,
@@ -670,7 +757,7 @@ describe("OCB", function () {
       );
 
       const attackResults = await runAttacks(
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         account2,
         account3,
@@ -695,7 +782,7 @@ describe("OCB", function () {
         account2,
         account3,
         monsterApiV1,
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         moveExecutorV1,
       } = await deploy();
@@ -716,11 +803,11 @@ describe("OCB", function () {
 
       await cloudCoverEffect.setChance(100);
 
-      await matchMakerV2.connect(account2).createAndJoin(0, "10", "6"); // Fernopig + Wavepaw
-      await matchMakerV2.connect(account3).createAndJoin(0, "6", "10"); // Fernopig + Wavepaw
+      await matchMaker.connect(account2).createAndJoin(0, "10", "6"); // Fernopig + Wavepaw
+      await matchMaker.connect(account3).createAndJoin(0, "6", "10"); // Fernopig + Wavepaw
 
-      let [, , monster1Hp, , , speed1] = await matchMakerV2.monsters(1);
-      let [, , monster2Hp, , , speed2] = await matchMakerV2.monsters(3);
+      let [, , monster1Hp, , , speed1] = await matchMaker.monsters(1);
+      let [, , monster2Hp, , , speed2] = await matchMaker.monsters(3);
 
       expect(monster1Hp).to.equal(BigInt(120));
       expect(monster2Hp).to.equal(BigInt(125));
@@ -730,7 +817,7 @@ describe("OCB", function () {
       const matchId = 1;
 
       await runAttacks(
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         account2,
         account3,
@@ -739,21 +826,21 @@ describe("OCB", function () {
         await speedAuraMove.getAddress(),
       );
 
-      let statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
+      let statusEffectsMonster1 = await matchMaker.getStatusEffectsArray(1);
       expect(statusEffectsMonster1.length).to.equal(1);
 
-      let statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
+      let statusEffectsMonster2 = await matchMaker.getStatusEffectsArray(3);
       expect(statusEffectsMonster2.length).to.equal(1);
 
       // no damage yet
-      [, , monster1Hp] = await matchMakerV2.monsters(1);
-      [, , monster2Hp] = await matchMakerV2.monsters(3);
+      [, , monster1Hp] = await matchMaker.monsters(1);
+      [, , monster2Hp] = await matchMaker.monsters(3);
       expect(monster1Hp).to.equal(BigInt(120));
       expect(monster2Hp).to.equal(BigInt(125));
 
       // attack with the player who has the attack aura
       await runAttacks(
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         account2,
         account3,
@@ -763,14 +850,14 @@ describe("OCB", function () {
       );
 
       // damage caused (extra 20 from attack aura)
-      [, , monster1Hp] = await matchMakerV2.monsters(1);
-      [, , monster2Hp] = await matchMakerV2.monsters(3);
+      [, , monster1Hp] = await matchMaker.monsters(1);
+      [, , monster2Hp] = await matchMaker.monsters(3);
       expect(monster1Hp).to.equal(BigInt(120));
       expect(monster2Hp).to.equal(BigInt(57));
     });
 
     it("should have issues fixed that occured in a battle on 2023-10-20", async () => {
-      const { account2, account3, matchMakerV2, eventLogger, moveExecutorV1 } =
+      const { account2, account3, matchMaker, eventLogger, moveExecutorV1 } =
         await deploy();
 
       const {
@@ -788,11 +875,11 @@ describe("OCB", function () {
 
       await cloudCoverEffect.setChance(100);
 
-      await matchMakerV2.connect(account2).createAndJoin(0, "10", "6"); // Fernopig + Wavepaw
-      await matchMakerV2.connect(account3).createAndJoin(0, "6", "10"); // Fernopig + Wavepaw
+      await matchMaker.connect(account2).createAndJoin(0, "10", "6"); // Fernopig + Wavepaw
+      await matchMaker.connect(account3).createAndJoin(0, "6", "10"); // Fernopig + Wavepaw
 
-      let [, , monster1Hp, , , speed1] = await matchMakerV2.monsters(1);
-      let [, , monster2Hp, , , speed2] = await matchMakerV2.monsters(3);
+      let [, , monster1Hp, , , speed1] = await matchMaker.monsters(1);
+      let [, , monster2Hp, , , speed2] = await matchMaker.monsters(3);
 
       expect(monster1Hp).to.equal(BigInt(120));
       expect(monster2Hp).to.equal(BigInt(125));
@@ -802,7 +889,7 @@ describe("OCB", function () {
       const matchId = 1;
 
       await runAttacks(
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         account2,
         account3,
@@ -811,10 +898,10 @@ describe("OCB", function () {
         await cloudCoverMove.getAddress(),
       );
 
-      let statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
+      let statusEffectsMonster1 = await matchMaker.getStatusEffectsArray(1);
       expect(statusEffectsMonster1.length).to.equal(0);
 
-      let statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
+      let statusEffectsMonster2 = await matchMaker.getStatusEffectsArray(3);
       expect(statusEffectsMonster2.length).to.equal(1);
       expect(statusEffectsMonster2[0][0]).to.equal(
         await cloudCoverEffect.getAddress(),
@@ -824,13 +911,13 @@ describe("OCB", function () {
       );
 
       // no damage yet
-      [, , monster1Hp] = await matchMakerV2.monsters(1);
-      [, , monster2Hp] = await matchMakerV2.monsters(3);
+      [, , monster1Hp] = await matchMaker.monsters(1);
+      [, , monster2Hp] = await matchMaker.monsters(3);
       expect(monster1Hp).to.equal(BigInt(120));
       expect(monster2Hp).to.equal(BigInt(125));
 
       await runAttacks(
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         account2,
         account3,
@@ -840,12 +927,12 @@ describe("OCB", function () {
       );
 
       // no damage yet
-      [, , monster1Hp] = await matchMakerV2.monsters(1);
-      [, , monster2Hp] = await matchMakerV2.monsters(3);
+      [, , monster1Hp] = await matchMaker.monsters(1);
+      [, , monster2Hp] = await matchMaker.monsters(3);
       expect(monster1Hp).to.equal(BigInt(120));
       expect(monster2Hp).to.equal(BigInt(125));
 
-      statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
+      statusEffectsMonster1 = await matchMaker.getStatusEffectsArray(1);
       expect(statusEffectsMonster1.length).to.equal(1);
       expect(statusEffectsMonster1[0][0]).to.equal(
         await cloudCoverEffect.getAddress(),
@@ -854,7 +941,7 @@ describe("OCB", function () {
         BigInt(2), // turns left
       );
 
-      statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
+      statusEffectsMonster2 = await matchMaker.getStatusEffectsArray(3);
       expect(statusEffectsMonster2.length).to.equal(2);
       expect(statusEffectsMonster2[0][0]).to.equal(
         await cloudCoverEffect.getAddress(),
@@ -872,7 +959,7 @@ describe("OCB", function () {
       await cloudCoverEffect.setChance(0);
 
       await runAttacks(
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         account2,
         account3,
@@ -882,12 +969,12 @@ describe("OCB", function () {
       );
 
       // big damage
-      [, , monster1Hp] = await matchMakerV2.monsters(1);
-      [, , monster2Hp] = await matchMakerV2.monsters(3);
+      [, , monster1Hp] = await matchMaker.monsters(1);
+      [, , monster2Hp] = await matchMaker.monsters(3);
       expect(monster1Hp).to.equal(BigInt(12));
       expect(monster2Hp).to.equal(BigInt(125));
 
-      statusEffectsMonster1 = await matchMakerV2.getStatusEffectsArray(1);
+      statusEffectsMonster1 = await matchMaker.getStatusEffectsArray(1);
       expect(statusEffectsMonster1.length).to.equal(3);
       expect(statusEffectsMonster1[0][0]).to.equal(
         await cloudCoverEffect.getAddress(),
@@ -905,7 +992,7 @@ describe("OCB", function () {
         await damageOverTimeEffect.getAddress(),
       );
 
-      statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
+      statusEffectsMonster2 = await matchMaker.getStatusEffectsArray(3);
       expect(statusEffectsMonster2.length).to.equal(1);
       expect(statusEffectsMonster2[0][0]).to.equal(
         await speedAuraEffect.getAddress(),
@@ -915,7 +1002,7 @@ describe("OCB", function () {
       );
 
       await runAttacks(
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         account2,
         account3,
@@ -925,12 +1012,12 @@ describe("OCB", function () {
       );
 
       // first monster killed
-      [, , monster1Hp] = await matchMakerV2.monsters(1);
-      [, , monster2Hp] = await matchMakerV2.monsters(3);
+      [, , monster1Hp] = await matchMaker.monsters(1);
+      [, , monster2Hp] = await matchMaker.monsters(3);
       expect(monster1Hp).to.equal(BigInt(0));
       expect(monster2Hp).to.equal(BigInt(125));
 
-      statusEffectsMonster2 = await matchMakerV2.getStatusEffectsArray(3);
+      statusEffectsMonster2 = await matchMaker.getStatusEffectsArray(3);
       expect(statusEffectsMonster2.length).to.equal(2);
       expect(statusEffectsMonster2[0][0]).to.equal(
         await speedAuraEffect.getAddress(),
@@ -951,7 +1038,7 @@ describe("OCB", function () {
     const {
       account2,
       account3,
-      matchMakerV2,
+      matchMaker,
       monsterApiV1,
       eventLogger,
       moveExecutorV1,
@@ -959,10 +1046,10 @@ describe("OCB", function () {
 
     await createMockMonsters(monsterApiV1);
 
-    await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-    await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+    await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+    await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-    const matchId = await matchMakerV2.matchCount();
+    const matchId = await matchMaker.matchCount();
 
     const { damageOverTimeAttack, damageOverTimeEffect } = await deployAttacks(
       eventLogger,
@@ -970,7 +1057,7 @@ describe("OCB", function () {
     );
 
     await runAttacks(
-      matchMakerV2,
+      matchMaker,
       eventLogger,
       account2,
       account3,
@@ -988,7 +1075,7 @@ describe("OCB", function () {
     const {
       account2,
       account3,
-      matchMakerV2,
+      matchMaker,
       monsterApiV1,
       eventLogger,
       moveExecutorV1,
@@ -996,15 +1083,15 @@ describe("OCB", function () {
 
     await createMockMonsters(monsterApiV1);
 
-    await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-    await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+    await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+    await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-    const matchId = await matchMakerV2.matchCount();
+    const matchId = await matchMaker.matchCount();
 
     const { cloudCoverMove } = await deployAttacks(eventLogger, moveExecutorV1);
 
     await runAttacks(
-      matchMakerV2,
+      matchMaker,
       eventLogger,
       account2,
       account3,
@@ -1013,7 +1100,7 @@ describe("OCB", function () {
       await cloudCoverMove.getAddress(),
     );
 
-    const match = await matchMakerV2.getMatchByUser(account2.getAddress());
+    const match = await matchMaker.getMatchByUser(account2.getAddress());
     expect(match[0]).to.equal(matchId);
   });
 
@@ -1021,7 +1108,7 @@ describe("OCB", function () {
     const {
       account2,
       account3,
-      matchMakerV2,
+      matchMaker,
       monsterApiV1,
       eventLogger,
       moveExecutorV1,
@@ -1029,10 +1116,10 @@ describe("OCB", function () {
 
     await createMockMonsters(monsterApiV1);
 
-    await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-    await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+    await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+    await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-    const matchId = await matchMakerV2.matchCount();
+    const matchId = await matchMaker.matchCount();
 
     const { damageOverTimeAttack } = await deployAttacks(
       eventLogger,
@@ -1040,7 +1127,7 @@ describe("OCB", function () {
     );
 
     await commitSingleAttack(
-      matchMakerV2,
+      matchMaker,
       eventLogger,
       account2,
       matchId,
@@ -1052,7 +1139,7 @@ describe("OCB", function () {
     await ethers.provider.send("evm_mine", []);
 
     const events = await revealSingleAttack(
-      matchMakerV2,
+      matchMaker,
       eventLogger,
       account2,
       matchId,
@@ -1074,7 +1161,7 @@ describe("OCB", function () {
     const {
       account2,
       account3,
-      matchMakerV2,
+      matchMaker,
       monsterApiV1,
       eventLogger,
       moveExecutorV1,
@@ -1083,10 +1170,10 @@ describe("OCB", function () {
 
     await createMockMonsters(monsterApiV1);
 
-    await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-    await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+    await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+    await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-    const matchId = await matchMakerV2.matchCount();
+    const matchId = await matchMaker.matchCount();
 
     const { damageOverTimeAttack } = await deployAttacks(
       eventLogger,
@@ -1097,7 +1184,7 @@ describe("OCB", function () {
     for (let i = 0; i < 10; i++) {
       try {
         await commitSingleAttack(
-          matchMakerV2,
+          matchMaker,
           eventLogger,
           account2,
           matchId,
@@ -1109,7 +1196,7 @@ describe("OCB", function () {
         await ethers.provider.send("evm_mine", []);
 
         await revealSingleAttack(
-          matchMakerV2,
+          matchMaker,
           eventLogger,
           account2,
           matchId,
@@ -1144,7 +1231,7 @@ describe("OCB", function () {
     const {
       account2,
       account3,
-      matchMakerV2,
+      matchMaker,
       monsterApiV1,
       eventLogger,
       moveExecutorV1,
@@ -1153,11 +1240,11 @@ describe("OCB", function () {
 
     await createMockMonsters(monsterApiV1);
 
-    await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-    await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+    await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+    await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-    const matchId = await matchMakerV2.matchCount();
-    let match = await matchMakerV2.getMatchByUser(account2.getAddress());
+    const matchId = await matchMaker.matchCount();
+    let match = await matchMaker.getMatchByUser(account2.getAddress());
     // round should be 0
     expect(match[1][6]).to.equal(BigInt(0));
 
@@ -1167,7 +1254,7 @@ describe("OCB", function () {
     );
 
     await runAttacks(
-      matchMakerV2,
+      matchMaker,
       eventLogger,
       account2,
       account3,
@@ -1177,7 +1264,7 @@ describe("OCB", function () {
       false,
     );
 
-    match = await matchMakerV2.getMatchByUser(account2.getAddress());
+    match = await matchMaker.getMatchByUser(account2.getAddress());
     // round should now be 1 and not zero anymore
     expect(match[1][6]).to.equal(BigInt(1));
   });
@@ -1186,7 +1273,7 @@ describe("OCB", function () {
     const {
       account2,
       account3,
-      matchMakerV2,
+      matchMaker,
       monsterApiV1,
       eventLogger,
       moveExecutorV1,
@@ -1194,11 +1281,11 @@ describe("OCB", function () {
 
     await createMockMonsters(monsterApiV1);
 
-    await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-    await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+    await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+    await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
 
-    const matchId = await matchMakerV2.matchCount();
-    let match = await matchMakerV2.getMatchByUser(account2.getAddress());
+    const matchId = await matchMaker.matchCount();
+    let match = await matchMaker.getMatchByUser(account2.getAddress());
     // round should be 0
     expect(match[1][6]).to.equal(BigInt(0));
 
@@ -1210,7 +1297,7 @@ describe("OCB", function () {
     let errorThrown = false;
     try {
       await runAttacks(
-        matchMakerV2,
+        matchMaker,
         eventLogger,
         account2,
         account3,

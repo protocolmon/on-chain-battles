@@ -16,8 +16,12 @@ async function main() {
     await deployContract("ContractApiV1");
   output.contracts.ContractApiV1 = contractApiV1Address;
 
-  const { address: usernamesV1Address } = await deployContract("UsernamesV1");
-  output.contracts.UsernamesV1 = usernamesV1Address;
+  if (!process.env.USERNAMES) {
+    const { address: usernamesV1Address } = await deployContract("UsernamesV1");
+    output.contracts.UsernamesV1 = usernamesV1Address;
+  } else {
+    output.contracts.UsernamesV1 = process.env.USERNAMES;
+  }
 
   const { address: monsterApiV1Address } = await deployContract("MonsterApiV1");
   const { address: moveExecutorV1Address } = await deployContract(
@@ -40,6 +44,17 @@ async function main() {
       eventLoggerV1Address,
       86400, // 1 day in seconds
     ]);
+
+  const { address: leaderboardV1Address } = await deployProxy("LeaderboardV1", [
+    matchMakerV2Address,
+    output.contracts.UsernamesV1,
+  ]);
+  output.contracts.LeaderboardV1 = leaderboardV1Address;
+
+  console.log(`Setting leaderboard on match maker...`);
+  await (matchMakerV2 as unknown as MatchMakerV2).setLeaderboard(
+    leaderboardV1Address,
+  );
 
   console.log(`Permitting match maker to use move executor`);
   const moveExecutorV1 = await ethers.getContractAt(
