@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 import {
   EventLoggerV1,
-  MatchMakerV2,
+  MatchMakerV3,
   MonsterApiV1,
   MoveExecutorV1,
 } from "../typechain-types";
@@ -27,7 +27,7 @@ const getCommitHash = (move: string, secret: string = "secret") =>
   );
 
 describe("OCB", function () {
-  async function deploy() {
+  async function deploy(useCommitReveal: boolean = true) {
     const signers = await ethers.getSigners();
     const [owner, account2, account3] = signers;
 
@@ -45,20 +45,19 @@ describe("OCB", function () {
     const EventLoggerV1 = await ethers.getContractFactory("EventLoggerV1");
     const eventLogger = await EventLoggerV1.deploy(await owner.getAddress());
 
-    const MatchMakerV2 = await ethers.getContractFactory("MatchMakerV2");
-    const matchMakerV2 = await upgrades.deployProxy(MatchMakerV2, [
+    const MatchMakerV3 = await ethers.getContractFactory("MatchMakerV3");
+    const matchMakerV3 = await upgrades.deployProxy(MatchMakerV3, [
       await monsterApiV1.getAddress(),
       await moveExecutorV1.getAddress(),
       await eventLogger.getAddress(),
-      ONE_MINUTE,
     ]);
 
     const LeaderboardV1 = await ethers.getContractFactory("LeaderboardV1");
     const leaderboardV1 = await upgrades.deployProxy(LeaderboardV1, [
-      await matchMakerV2.getAddress(),
+      await matchMakerV3.getAddress(),
       await userNamesV1.getAddress(),
     ]);
-    await matchMakerV2.setLeaderboard(await leaderboardV1.getAddress());
+    await matchMakerV3.setLeaderboard(await leaderboardV1.getAddress());
 
     const TimeoutMove = await ethers.getContractFactory("TimeoutMove");
     const timeoutMove = await TimeoutMove.deploy();
@@ -66,16 +65,17 @@ describe("OCB", function () {
     await timeoutMove.setLogger(await eventLogger.getAddress());
     await timeoutMove.addExecutor(await moveExecutorV1.getAddress());
 
-    await (matchMakerV2 as unknown as MatchMakerV2).setTimeout(
+    await (matchMakerV3 as unknown as MatchMakerV3).setMode(
       0,
       ONE_MINUTE,
       await timeoutMove.getAddress(),
+      useCommitReveal,
     );
-    await eventLogger.addWriter(await matchMakerV2.getAddress());
+    await eventLogger.addWriter(await matchMakerV3.getAddress());
 
     await moveExecutorV1.grantRole(
       await moveExecutorV1.PERMITTED_ROLE(),
-      await matchMakerV2.getAddress(),
+      await matchMakerV3.getAddress(),
     );
 
     await eventLogger.addWriter(await moveExecutorV1.getAddress());
@@ -84,7 +84,7 @@ describe("OCB", function () {
       account2,
       account3,
       eventLogger,
-      matchMakerV2: matchMakerV2 as unknown as MatchMakerV2,
+      matchMakerV2: matchMakerV3 as unknown as MatchMakerV3,
       monsterApiV1,
       moveExecutorV1,
       leaderboardV1,
@@ -266,7 +266,7 @@ describe("OCB", function () {
   }
 
   async function commit(
-    matchMakerV2: MatchMakerV2,
+    matchMakerV2: MatchMakerV3,
     eventLogger: EventLoggerV1,
     user: Signer,
     matchId: number | bigint,
@@ -282,7 +282,7 @@ describe("OCB", function () {
   }
 
   async function reveal(
-    matchMakerV2: MatchMakerV2,
+    matchMakerV2: MatchMakerV3,
     eventLogger: EventLoggerV1,
     user: Signer,
     matchId: number | bigint,
@@ -298,7 +298,7 @@ describe("OCB", function () {
   }
 
   async function commitSingleAttack(
-    matchMakerV2: MatchMakerV2,
+    matchMakerV2: MatchMakerV3,
     eventLogger: EventLoggerV1,
     user: Signer,
     matchId: number | bigint,
@@ -314,7 +314,7 @@ describe("OCB", function () {
   }
 
   async function revealSingleAttack(
-    matchMakerV2: MatchMakerV2,
+    matchMakerV2: MatchMakerV3,
     eventLogger: EventLoggerV1,
     user: Signer,
     matchId: number | bigint,
@@ -330,23 +330,26 @@ describe("OCB", function () {
   }
 
   async function runAttacks(
-    matchMakerV2: MatchMakerV2,
+    matchMakerV2: MatchMakerV3,
     eventLogger: EventLoggerV1,
     player1: Signer,
     player2: Signer,
     matchId: number | bigint,
     move1: string,
     move2?: string,
+    useCommitReveal: boolean = true,
   ): Promise<any[]> {
     const events = [];
 
-    events.push(
-      ...(await commit(matchMakerV2, eventLogger, player1, matchId, move1)),
-    );
-    if (move2) {
+    if (useCommitReveal) {
       events.push(
-        ...(await commit(matchMakerV2, eventLogger, player2, matchId, move2)),
+        ...(await commit(matchMakerV2, eventLogger, player1, matchId, move1)),
       );
+      if (move2) {
+        events.push(
+          ...(await commit(matchMakerV2, eventLogger, player2, matchId, move2)),
+        );
+      }
     }
 
     events.push(
@@ -624,7 +627,7 @@ describe("OCB", function () {
             await damageOverTimeAttack.getAddress(),
           );
         } catch (e: any) {
-          if (e.message.includes("MatchMakerV2: game over")) {
+          if (e.message.includes("MatchMakerV3: game over")) {
             break;
           }
           throw e;
@@ -1090,7 +1093,7 @@ describe("OCB", function () {
       moveExecutorV1,
     );
 
-    // just do 2 attacks and the opponent should be defeated
+    // battle until game over
     for (let i = 0; i < 10; i++) {
       try {
         await commitSingleAttack(
@@ -1113,7 +1116,7 @@ describe("OCB", function () {
           await damageOverTimeAttack.getAddress(),
         );
       } catch (err: any) {
-        if (err.message.includes("MatchMakerV2: game over")) {
+        if (err.message.includes("MatchMakerV3: game over")) {
           break;
         }
 
@@ -1135,5 +1138,92 @@ describe("OCB", function () {
 
     const allStats = await leaderboardV1.getAllStats(0);
     expect(allStats.length).to.equal(2);
+  });
+
+  it("should work without commits", async () => {
+    const {
+      account2,
+      account3,
+      matchMakerV2,
+      monsterApiV1,
+      eventLogger,
+      moveExecutorV1,
+      leaderboardV1,
+    } = await deploy(false);
+
+    await createMockMonsters(monsterApiV1);
+
+    await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+    await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+
+    const matchId = await matchMakerV2.matchCount();
+    let match = await matchMakerV2.getMatchByUser(account2.getAddress());
+    // round should be 0
+    expect(match[1][6]).to.equal(BigInt(0));
+
+    const { damageOverTimeAttack, cloudCoverMove } = await deployAttacks(
+      eventLogger,
+      moveExecutorV1,
+    );
+
+    await runAttacks(
+      matchMakerV2,
+      eventLogger,
+      account2,
+      account3,
+      matchId,
+      await damageOverTimeAttack.getAddress(),
+      await cloudCoverMove.getAddress(),
+      false,
+    );
+
+    match = await matchMakerV2.getMatchByUser(account2.getAddress());
+    // round should now be 1 and not zero anymore
+    expect(match[1][6]).to.equal(BigInt(1));
+  });
+
+  it("should not without commits if the setting isn't applied", async () => {
+    const {
+      account2,
+      account3,
+      matchMakerV2,
+      monsterApiV1,
+      eventLogger,
+      moveExecutorV1,
+    } = await deploy(true);
+
+    await createMockMonsters(monsterApiV1);
+
+    await matchMakerV2.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+    await matchMakerV2.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+
+    const matchId = await matchMakerV2.matchCount();
+    let match = await matchMakerV2.getMatchByUser(account2.getAddress());
+    // round should be 0
+    expect(match[1][6]).to.equal(BigInt(0));
+
+    const { damageOverTimeAttack, cloudCoverMove } = await deployAttacks(
+      eventLogger,
+      moveExecutorV1,
+    );
+
+    let errorThrown = false;
+    try {
+      await runAttacks(
+        matchMakerV2,
+        eventLogger,
+        account2,
+        account3,
+        matchId,
+        await damageOverTimeAttack.getAddress(),
+        await cloudCoverMove.getAddress(),
+        false,
+      );
+    } catch (err) {
+      expect((err as Error).message).to.contain("MatchMakerV3: not committed");
+      errorThrown = true;
+    }
+
+    expect(errorThrown).to.be.true;
   });
 });

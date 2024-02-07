@@ -1,11 +1,11 @@
 import { ethers } from "hardhat";
 import { deployProxy } from "./utils";
-import contracts from "../cli/contracts.generated.json";
+import contracts from "../cli/contracts.generated.sapphire.json";
 
 async function main() {
   const [deployer] = await ethers.getSigners();
 
-  const { address: pmonAddress } = await deployProxy("LeaderboardV1", [
+  await deployProxy("LeaderboardV1", [
     await deployer.getAddress(),
     contracts.contracts.UsernamesV1,
   ]);
