@@ -243,7 +243,6 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             _match.currentOpponentMove.commit != 0
         ) {
             _match.phase = Phase.Reveal;
-            _match.timeout = block.timestamp + getTimeout(matchId);
         }
 
         logger.log(LOG_COMMIT, msg.sender, _commit);
@@ -259,15 +258,10 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     ) public isInMatch(matchId) {
         Match storage _match = matches[matchId];
 
-        // if the round timed out, one player can end it by revealing
-        if (_match.timeout >= block.timestamp) {
-            /// @dev We might not need this check anymore or could potentially refactor it
-            /// lets leave it commented out for now
-            //            require(
-            //                _match.phase == Phase.Reveal,
-            //                "MatchMakerV3: not in reveal phase"
-            //            );
-        }
+        require(
+            _match.phase == Phase.Reveal,
+            "MatchMakerV3: not in reveal phase"
+        );
 
         logger.setMatchId(matchId);
         logger.setRound(_match.round);
@@ -277,7 +271,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         revealMove(_match, msg.sender, move, secret, timeoutMove);
 
         // check if the timeout expired
-        if (_match.timeout < block.timestamp) {
+        if (!hasOtherPlayerCommitted(_match, msg.sender)) {
             Move storage relevantMove = revealMove(
                 _match,
                 getOtherPlayerInMatch(_match, msg.sender),
@@ -413,8 +407,18 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         logger.setMatchId(0);
     }
 
-    function updateBlockTimestamp() external {
-        /// @dev Do nothing but a tx to update the block timestamp
+    function goToRevealPhase(uint256 matchId) external {
+        // Permit moving to reveal phase if the match timeout has expired
+        Match storage _match = matches[matchId];
+        require(
+            _match.phase == Phase.Commit,
+            "MatchMakerV3: not in commit phase"
+        );
+        require(
+            block.timestamp > _match.timeout,
+            "MatchMakerV3: timeout not expired"
+        );
+        _match.phase = Phase.Reveal;
     }
 
     /**************************************************************************
@@ -535,6 +539,19 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             return _match.opponentTeam.owner;
         } else if (_match.opponentTeam.owner == player) {
             return _match.challengerTeam.owner;
+        } else {
+            revert("MatchMakerV3: no other player in match");
+        }
+    }
+
+    function hasOtherPlayerCommitted(
+        Match memory _match,
+        address player
+    ) internal pure returns (bool) {
+        if (_match.challengerTeam.owner == player) {
+            return _match.currentOpponentMove.commit != 0;
+        } else if (_match.opponentTeam.owner == player) {
+            return _match.currentChallengerMove.commit != 0;
         } else {
             revert("MatchMakerV3: no other player in match");
         }

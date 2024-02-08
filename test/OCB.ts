@@ -1138,6 +1138,7 @@ describe("OCB", function () {
     await ethers.provider.send("evm_increaseTime", [ONE_MINUTE + 1]);
     await ethers.provider.send("evm_mine", []);
 
+    await matchMaker.goToRevealPhase(matchId);
     const events = await revealSingleAttack(
       matchMaker,
       eventLogger,
@@ -1195,6 +1196,7 @@ describe("OCB", function () {
         await ethers.provider.send("evm_increaseTime", [ONE_MINUTE + 1]);
         await ethers.provider.send("evm_mine", []);
 
+        await matchMaker.goToRevealPhase(matchId);
         await revealSingleAttack(
           matchMaker,
           eventLogger,
