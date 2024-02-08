@@ -1309,7 +1309,9 @@ describe("OCB", function () {
         false,
       );
     } catch (err) {
-      expect((err as Error).message).to.contain("MatchMakerV3: not committed");
+      expect((err as Error).message).to.contain(
+        "MatchMakerV3: not in reveal phase",
+      );
       errorThrown = true;
     }
 
