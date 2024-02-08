@@ -34,7 +34,9 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     enum Phase {
         Commit,
         Reveal,
-        GameOver
+        GameOver,
+        /// @dev In case no commit/reveal is needed, we don't need commit/reveal phases
+        Other
     }
 
     struct Team {
@@ -213,9 +215,6 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         bytes32 _commit
     ) external payable isInMatch(matchId) {
         Match storage _match = matches[matchId];
-        if (!modes[_match.mode].needsCommitReveal) {
-            revert("MatchMakerV3: commit not needed");
-        }
 
         require(
             _match.phase == Phase.Commit,
@@ -254,155 +253,25 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     function reveal(
         uint256 matchId,
         address move,
+        /// @dev if no commit reveal scheme is needed, the secret is ignore
         bytes32 secret
     ) public isInMatch(matchId) {
         Match storage _match = matches[matchId];
 
-        require(
-            _match.phase == Phase.Reveal,
-            "MatchMakerV3: not in reveal phase"
-        );
+        if (modes[_match.mode].needsCommitReveal) {
+            require(
+                _match.phase == Phase.Reveal,
+                "MatchMakerV3: not in reveal phase"
+            );
+        }
 
+        /// @dev Write temp state to the logger
         logger.setMatchId(matchId);
         logger.setRound(_match.round);
 
-        /// @dev I know this could be done cleaner
-        address timeoutMove = modes[_match.mode].timeoutMove;
-        revealMove(_match, msg.sender, move, secret, timeoutMove);
+        executeMovesAndApplyEffects(_match, msg.sender, move, secret);
 
-        // check if the timeout expired
-        if (!hasOtherPlayerCommitted(_match, msg.sender)) {
-            Move storage relevantMove = revealMove(
-                _match,
-                getOtherPlayerInMatch(_match, msg.sender),
-                timeoutMove,
-                bytes32(0),
-                timeoutMove
-            );
-
-            assignMonstersToMove(
-                _match,
-                relevantMove,
-                _match.challengerTeam.owner != msg.sender
-            );
-        }
-
-        if (
-            (address(_match.currentChallengerMove.move) != address(0) &&
-                address(_match.currentOpponentMove.move) != address(0))
-        ) {
-            IBaseStatusEffectV1.StatusEffectWrapper[]
-                memory challengerInputEffects = getStatusEffectsArray(
-                    _match.currentChallengerMove.monsterId
-                );
-            IBaseStatusEffectV1.StatusEffectWrapper[]
-                memory opponentInputEffects = getStatusEffectsArray(
-                    _match.currentOpponentMove.monsterId
-                );
-            IMonsterV1.Monster memory challengerMonster;
-            IMonsterV1.Monster memory opponentMonster;
-            IBaseStatusEffectV1.StatusEffectWrapper[]
-                memory challengerOutputEffects;
-            IBaseStatusEffectV1.StatusEffectWrapper[]
-                memory opponentOutputEffects;
-            (
-                challengerMonster,
-                opponentMonster,
-                challengerOutputEffects,
-                opponentOutputEffects
-            ) = moveExecutor.executeMoves(
-                monsters[_match.currentChallengerMove.monsterId],
-                monsters[_match.currentOpponentMove.monsterId],
-                IMoveExecutorV1.WrappedMoves(
-                    IMoveExecutorV1.WrappedMove(
-                        _match.currentChallengerMove.move,
-                        _match.challengerTeam.owner
-                    ),
-                    IMoveExecutorV1.WrappedMove(
-                        _match.currentOpponentMove.move,
-                        _match.opponentTeam.owner
-                    )
-                ),
-                challengerInputEffects,
-                opponentInputEffects,
-                uint256(blockhash(block.number - 1)), // using pseudo-randomness for first version here
-                logger
-            );
-            monsters[challengerMonster.tokenId] = challengerMonster;
-            monsters[opponentMonster.tokenId] = opponentMonster;
-            storeStatusEffects(
-                challengerMonster.tokenId,
-                challengerOutputEffects
-            );
-
-            _match.round++;
-            storeStatusEffects(opponentMonster.tokenId, opponentOutputEffects);
-
-            if (challengerMonster.hp == 0) {
-                transitStatusEffects(
-                    challengerMonster.tokenId,
-                    getOtherMonsterInTeam(
-                        challengerMonster.tokenId,
-                        _match.challengerTeam,
-                        _match.opponentTeam
-                    )
-                );
-                logger.log(LOG_MONSTER_DEFEATED, challengerMonster.tokenId);
-            }
-
-            if (opponentMonster.hp == 0) {
-                transitStatusEffects(
-                    opponentMonster.tokenId,
-                    getOtherMonsterInTeam(
-                        opponentMonster.tokenId,
-                        _match.challengerTeam,
-                        _match.opponentTeam
-                    )
-                );
-                logger.log(LOG_MONSTER_DEFEATED, opponentMonster.tokenId);
-            }
-
-            // reset moves
-            _match.currentChallengerMove.commit = 0;
-            _match.currentChallengerMove.move = IMoveV1(address(0));
-            _match.currentChallengerMove.monsterId = 0;
-            _match.currentOpponentMove.commit = 0;
-            _match.currentOpponentMove.move = IMoveV1(address(0));
-            _match.currentOpponentMove.monsterId = 0;
-
-            // set back to commit phase or if one player has no monster left, set to GameOver
-            if (
-                (monsters[_match.challengerTeam.firstMonsterId].hp == 0 &&
-                    monsters[_match.challengerTeam.secondMonsterId].hp == 0) ||
-                (monsters[_match.opponentTeam.firstMonsterId].hp == 0 &&
-                    monsters[_match.opponentTeam.secondMonsterId].hp == 0)
-            ) {
-                _match.phase = Phase.GameOver;
-
-                logger.log(
-                    LOG_GAME_OVER,
-                    monsters[_match.challengerTeam.secondMonsterId].hp == 0
-                        ? _match.opponentTeam.owner
-                        : _match.challengerTeam.owner
-                );
-
-                if (address(leaderboard) != address(0)) {
-                    if (
-                        monsters[_match.challengerTeam.secondMonsterId].hp == 0
-                    ) {
-                        leaderboard.addWin(_match.opponentTeam.owner);
-                        leaderboard.addLoss(_match.challengerTeam.owner);
-                    } else {
-                        leaderboard.addWin(_match.challengerTeam.owner);
-                        leaderboard.addLoss(_match.opponentTeam.owner);
-                    }
-                }
-            } else {
-                _match.phase = Phase.Commit;
-                _match.timeout = block.timestamp + getTimeout(matchId);
-            }
-        }
-
+        /// @dev This resets the logger for the next execution (just temp state)
         logger.setRound(0);
         logger.setMatchId(0);
     }
@@ -508,8 +377,149 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
      * INTERNAL FUNCTIONS
      *************************************************************************/
 
-    function getTimeout(uint256 matchId) internal view returns (uint256) {
-        return modes[matches[matchId].mode].timeout;
+    function executeMoves(Match storage _match) internal {
+        if (
+            (address(_match.currentChallengerMove.move) != address(0) &&
+                address(_match.currentOpponentMove.move) != address(0))
+        ) {
+            IBaseStatusEffectV1.StatusEffectWrapper[]
+                memory challengerInputEffects = getStatusEffectsArray(
+                    _match.currentChallengerMove.monsterId
+                );
+            IBaseStatusEffectV1.StatusEffectWrapper[]
+                memory opponentInputEffects = getStatusEffectsArray(
+                    _match.currentOpponentMove.monsterId
+                );
+            IMonsterV1.Monster memory challengerMonster;
+            IMonsterV1.Monster memory opponentMonster;
+            IBaseStatusEffectV1.StatusEffectWrapper[]
+                memory challengerOutputEffects;
+            IBaseStatusEffectV1.StatusEffectWrapper[]
+                memory opponentOutputEffects;
+            (
+                challengerMonster,
+                opponentMonster,
+                challengerOutputEffects,
+                opponentOutputEffects
+            ) = moveExecutor.executeMoves(
+                monsters[_match.currentChallengerMove.monsterId],
+                monsters[_match.currentOpponentMove.monsterId],
+                IMoveExecutorV1.WrappedMoves(
+                    IMoveExecutorV1.WrappedMove(
+                        _match.currentChallengerMove.move,
+                        _match.challengerTeam.owner
+                    ),
+                    IMoveExecutorV1.WrappedMove(
+                        _match.currentOpponentMove.move,
+                        _match.opponentTeam.owner
+                    )
+                ),
+                challengerInputEffects,
+                opponentInputEffects,
+                uint256(blockhash(block.number - 1)), // using pseudo-randomness for first version here
+                logger
+            );
+            monsters[challengerMonster.tokenId] = challengerMonster;
+            monsters[opponentMonster.tokenId] = opponentMonster;
+            storeStatusEffects(
+                challengerMonster.tokenId,
+                challengerOutputEffects,
+                opponentMonster.tokenId,
+                opponentOutputEffects
+            );
+
+            _match.round++;
+            if (challengerMonster.hp == 0) {
+                transitStatusEffects(
+                    challengerMonster.tokenId,
+                    getOtherMonsterInTeam(
+                        challengerMonster.tokenId,
+                        _match.challengerTeam,
+                        _match.opponentTeam
+                    )
+                );
+                logger.log(LOG_MONSTER_DEFEATED, challengerMonster.tokenId);
+            }
+
+            if (opponentMonster.hp == 0) {
+                transitStatusEffects(
+                    opponentMonster.tokenId,
+                    getOtherMonsterInTeam(
+                        opponentMonster.tokenId,
+                        _match.challengerTeam,
+                        _match.opponentTeam
+                    )
+                );
+                logger.log(LOG_MONSTER_DEFEATED, opponentMonster.tokenId);
+            }
+
+            // reset moves
+            _match.currentChallengerMove.commit = 0;
+            _match.currentChallengerMove.move = IMoveV1(address(0));
+            _match.currentChallengerMove.monsterId = 0;
+            _match.currentOpponentMove.commit = 0;
+            _match.currentOpponentMove.move = IMoveV1(address(0));
+            _match.currentOpponentMove.monsterId = 0;
+
+            // set back to commit phase or if one player has no monster left, set to GameOver
+            if (
+                (monsters[_match.challengerTeam.firstMonsterId].hp == 0 &&
+                    monsters[_match.challengerTeam.secondMonsterId].hp == 0) ||
+                (monsters[_match.opponentTeam.firstMonsterId].hp == 0 &&
+                    monsters[_match.opponentTeam.secondMonsterId].hp == 0)
+            ) {
+                _match.phase = Phase.GameOver;
+
+                logger.log(
+                    LOG_GAME_OVER,
+                    monsters[_match.challengerTeam.secondMonsterId].hp == 0
+                        ? _match.opponentTeam.owner
+                        : _match.challengerTeam.owner
+                );
+
+                if (address(leaderboard) != address(0)) {
+                    if (
+                        monsters[_match.challengerTeam.secondMonsterId].hp == 0
+                    ) {
+                        leaderboard.addWin(_match.opponentTeam.owner);
+                        leaderboard.addLoss(_match.challengerTeam.owner);
+                    } else {
+                        leaderboard.addWin(_match.challengerTeam.owner);
+                        leaderboard.addLoss(_match.opponentTeam.owner);
+                    }
+                }
+            } else {
+                if (modes[_match.mode].needsCommitReveal) {
+                    _match.phase = Phase.Commit;
+                }
+                _match.timeout = block.timestamp + modes[_match.mode].timeout;
+            }
+        }
+    }
+
+    function executeMovesAndApplyEffects(
+        Match storage _match,
+        address player,
+        address move,
+        bytes32 secret
+    ) internal {
+        revealMove(_match, msg.sender, move, secret);
+
+        if (modes[_match.mode].needsCommitReveal) {
+            if (!hasOtherPlayerCommitted(_match, msg.sender)) {
+                revealTimeoutMove(
+                    _match,
+                    getOtherPlayerInMatch(_match, msg.sender)
+                );
+            }
+        } else if (block.timestamp > _match.timeout) {
+            revealTimeoutMove(
+                _match,
+                getOtherPlayerInMatch(_match, msg.sender)
+            );
+        }
+
+        executeMoves(_match);
     }
 
     function getOtherMonsterInTeam(
@@ -591,7 +601,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             Team(msg.sender, firstMonsterId, secondMonsterId),
             Move(0, IMoveV1(address(0)), 0),
             Move(0, IMoveV1(address(0)), 0),
-            Phase.Commit,
+            modes[mode].needsCommitReveal ? Phase.Commit : Phase.Other,
             block.timestamp + modes[mode].timeout,
             0,
             address(0),
@@ -632,10 +642,9 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         Match storage _match,
         address player,
         address move,
-        bytes32 secret,
-        address timeoutMove
-    ) internal returns (Move storage relevantMove) {
-        relevantMove = _match.challengerTeam.owner == player
+        bytes32 secret
+    ) internal {
+        Move storage relevantMove = _match.challengerTeam.owner == player
             ? _match.currentChallengerMove
             : _match.currentOpponentMove;
 
@@ -645,8 +654,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         );
 
         // only do these checks if the move is not the timeout move + if we actually need a commit reveal scheme
-        if (move != timeoutMove && modes[_match.mode].needsCommitReveal) {
-            require(relevantMove.commit != 0, "MatchMakerV3: not committed");
+        if (modes[_match.mode].needsCommitReveal) {
             // verify if the commit was made with the secret
             require(
                 keccak256(abi.encodePacked(move, secret)) ==
@@ -658,6 +666,28 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         relevantMove.move = IMoveV1(move);
 
         logger.log(LOG_REVEAL, player, address(move));
+    }
+
+    function revealTimeoutMove(Match storage _match, address player) internal {
+        /// @todo Remove redundant code
+        Move storage relevantMove = _match.challengerTeam.owner == player
+            ? _match.currentChallengerMove
+            : _match.currentOpponentMove;
+
+        require(
+            address(relevantMove.move) == address(0),
+            "MatchMakerV3: already revealed"
+        );
+
+        relevantMove.move = IMoveV1(modes[_match.mode].timeoutMove);
+
+        logger.log(LOG_REVEAL, player, address(relevantMove.move));
+
+        assignMonstersToMove(
+            _match,
+            relevantMove,
+            _match.challengerTeam.owner == player
+        );
     }
 
     function transitStatusEffects(
@@ -697,20 +727,34 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             toEffects[i] = transitingEffects[i];
         }
 
-        storeStatusEffects(toMonsterId, toEffects);
         storeStatusEffects(
+            toMonsterId,
+            toEffects,
             fromMonsterId,
             new IBaseStatusEffectV1.StatusEffectWrapper[](0)
         );
     }
 
     function storeStatusEffects(
-        uint256 monsterId,
-        IBaseStatusEffectV1.StatusEffectWrapper[] memory effects
+        uint256 firstMonsterId,
+        IBaseStatusEffectV1.StatusEffectWrapper[] memory firstMonsterEffects,
+        uint256 secondMonsterId,
+        IBaseStatusEffectV1.StatusEffectWrapper[] memory secondMonsterEffects
     ) internal {
-        statusEffects[monsterId].statusEffectCount = effects.length;
-        for (uint256 i = 0; i < effects.length; i++) {
-            statusEffects[monsterId].statusEffects[i] = effects[i];
+        statusEffects[firstMonsterId].statusEffectCount = firstMonsterEffects
+            .length;
+        for (uint256 i = 0; i < firstMonsterEffects.length; i++) {
+            statusEffects[firstMonsterId].statusEffects[
+                i
+            ] = firstMonsterEffects[i];
+        }
+
+        statusEffects[secondMonsterId].statusEffectCount = secondMonsterEffects
+            .length;
+        for (uint256 i = 0; i < secondMonsterEffects.length; i++) {
+            statusEffects[secondMonsterId].statusEffects[
+                i
+            ] = secondMonsterEffects[i];
         }
     }
 }
