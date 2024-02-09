@@ -44,15 +44,19 @@ async function main() {
       eventLoggerV1Address,
     ]);
 
-  const { address: leaderboardV1Address } = await deployProxy("LeaderboardV1", [
-    matchMakerV3Address,
-    output.contracts.UsernamesV1,
-  ]);
-  output.contracts.LeaderboardV1 = leaderboardV1Address;
+  if (process.env.LEADERBOARD) {
+    output.contracts.LeaderboardV1 = process.env.LEADERBOARD;
+  } else {
+    const { address: leaderboardV1Address } = await deployProxy(
+      "LeaderboardV1",
+      [matchMakerV3Address, output.contracts.UsernamesV1],
+    );
+    output.contracts.LeaderboardV1 = leaderboardV1Address;
+  }
 
   console.log(`Setting leaderboard on match maker...`);
   await (matchMakerV3 as unknown as MatchMakerV3).setLeaderboard(
-    leaderboardV1Address,
+    output.contracts.LeaderboardV1,
   );
 
   console.log(`Permitting match maker to use move executor`);

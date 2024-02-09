@@ -1,13 +1,12 @@
 import { ethers, upgrades } from "hardhat";
-import contracts from "../cli/contracts.generated.json";
 
 async function main() {
-  const MatchMakerV2 = await ethers.getContractFactory("MatchMakerV2");
-  const matchMakerV2 = await upgrades.upgradeProxy(
-    "0x5D000Aa06746aC118351AAc034e1505dF6820D56",
-    MatchMakerV2,
+  const MatchMaker = await ethers.getContractFactory("MatchMakerV3");
+  const matchMaker = await upgrades.upgradeProxy(
+    process.env.MATCH_MAKER_ADDRESS as string,
+    MatchMaker,
   );
-  console.log("MatchMakerV2 upgraded to:", await matchMakerV2.getAddress());
+  console.log("MatchMaker upgraded to:", await matchMaker.getAddress());
 }
 
 main()
