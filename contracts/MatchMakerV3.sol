@@ -290,6 +290,10 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         _match.phase = Phase.Reveal;
     }
 
+    function updateBlockTimestamp() external {
+        // This function is only used for mining a block (which will gen a new timestamp)
+    }
+
     /**************************************************************************
      * EXTERNAL VIEW FUNCTIONS
      *************************************************************************/
