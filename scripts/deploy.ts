@@ -1,7 +1,7 @@
 import { ethers, network, upgrades } from "hardhat";
 import fs from "fs";
 import { deployContract, deployProxy } from "./utils";
-import { EventLoggerV1, MatchMakerV2 } from "../typechain-types";
+import { EventLoggerV1, MatchMakerV3 } from "../typechain-types";
 
 async function main() {
   const output: any = {
@@ -37,22 +37,21 @@ async function main() {
 
   output.contracts.EventLoggerV1 = eventLoggerV1Address;
 
-  const { address: matchMakerV2Address, instance: matchMakerV2 } =
-    await deployProxy("MatchMakerV2", [
+  const { address: matchMakerV3Address, instance: matchMakerV3 } =
+    await deployProxy("MatchMakerV3", [
       monsterApiV1Address,
       moveExecutorV1Address,
       eventLoggerV1Address,
-      86400, // 1 day in seconds
     ]);
 
   const { address: leaderboardV1Address } = await deployProxy("LeaderboardV1", [
-    matchMakerV2Address,
+    matchMakerV3Address,
     output.contracts.UsernamesV1,
   ]);
   output.contracts.LeaderboardV1 = leaderboardV1Address;
 
   console.log(`Setting leaderboard on match maker...`);
-  await (matchMakerV2 as unknown as MatchMakerV2).setLeaderboard(
+  await (matchMakerV3 as unknown as MatchMakerV3).setLeaderboard(
     leaderboardV1Address,
   );
 
@@ -63,15 +62,15 @@ async function main() {
   );
   await moveExecutorV1.grantRole(
     await moveExecutorV1.PERMITTED_ROLE(),
-    matchMakerV2Address,
+    matchMakerV3Address,
   );
 
-  await (eventLoggerV1 as EventLoggerV1).addWriter(matchMakerV2Address);
+  await (eventLoggerV1 as EventLoggerV1).addWriter(matchMakerV3Address);
   await (eventLoggerV1 as EventLoggerV1).addWriter(
     await moveExecutorV1.getAddress(),
   );
 
-  output.contracts.MatchMakerV2 = matchMakerV2Address;
+  output.contracts.MatchMakerV3 = matchMakerV3Address;
 
   const ConfusedEffect = await ethers.getContractFactory("ConfusedEffect");
   const confusedEffect = await ConfusedEffect.deploy();
@@ -188,10 +187,11 @@ async function main() {
   );
   await confusedEffect.addConfusedMove(timeoutMoveAddress, confusedTimeoutMove);
 
-  await (matchMakerV2 as unknown as MatchMakerV2).setTimeout(
+  await (matchMakerV3 as unknown as MatchMakerV3).setMode(
     "1",
     "47",
     timeoutMoveAddress,
+    true,
   );
 
   output.effects.DamageOverTimeEffect = damageOverTimeEffectAddress;
