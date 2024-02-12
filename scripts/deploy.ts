@@ -1,7 +1,11 @@
 import { ethers, network, upgrades } from "hardhat";
 import fs from "fs";
 import { deployContract, deployProxy } from "./utils";
-import { EventLoggerV1, MatchMakerV3 } from "../typechain-types";
+import {
+  EventLoggerV1,
+  LeaderboardManagerV1,
+  MatchMakerV3,
+} from "../typechain-types";
 
 async function main() {
   const output: any = {
@@ -58,6 +62,18 @@ async function main() {
   await (matchMakerV3 as unknown as MatchMakerV3).setLeaderboard(
     output.contracts.LeaderboardV1,
   );
+
+  const { address: leaderboardManagerAddress, instance: leaderboardManager } =
+    await deployProxy("LeaderboardManagerV1", [await deployer.getAddress()]);
+
+  if (process.env.LEADERBOARD_MANAGER) {
+    output.contracts.LeaderboardManagerV1 = process.env.LEADERBOARD_MANAGER;
+  } else {
+    await (
+      leaderboardManager as unknown as LeaderboardManagerV1
+    ).setLeaderboard("1", output.contracts.LeaderboardV1);
+    output.contracts.LeaderboardManagerV1 = leaderboardManagerAddress;
+  }
 
   console.log(`Permitting match maker to use move executor`);
   const moveExecutorV1 = await ethers.getContractAt(

@@ -24,3 +24,5 @@ cli/contracts.generated.json
 
 # Sourcify
 scripts/sourcify
+
+cli/contracts.generated*
