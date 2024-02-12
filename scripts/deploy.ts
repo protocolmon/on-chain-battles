@@ -198,6 +198,13 @@ async function main() {
     true,
   );
 
+  await (matchMakerV3 as unknown as MatchMakerV3).setMode(
+    "2",
+    "182",
+    timeoutMoveAddress,
+    true,
+  );
+
   output.effects.DamageOverTimeEffect = damageOverTimeEffectAddress;
   output.attacks.DamageOverTimeMove = damageOverTimeMoveAddress;
   output.effects.FoggedEffect = foggedEffectAddress;
