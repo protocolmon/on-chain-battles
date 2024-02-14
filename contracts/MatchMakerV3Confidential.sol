@@ -13,7 +13,7 @@ import {IMoveStatusEffectV1} from "./interfaces/IMoveStatusEffectV1.sol";
 import {ILeaderboardV1} from "./interfaces/ILeaderboardV1.sol";
 import "./interfaces/IEventLoggerV1.sol";
 
-contract MatchMakerV3 is Initializable, OwnableUpgradeable {
+contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
     using StringsLibV1 for address;
     using StringsLibV1 for bytes32;
 
@@ -21,23 +21,23 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
      * CONSTANTS *
      ***************************/
 
-    uint256 public constant LOG_COMMIT = 1_000_000;
+    // OLD EVENT WAS HERE, THAT'S WHY THE LOG ID 1_000_000 IS MISSING
     uint256 public constant LOG_REVEAL = 1_000_001;
     // OLD EVENT WAS HERE, THAT'S WHY THE LOG ID 1_000_002 IS MISSING
     uint256 public constant LOG_GAME_OVER = 1_000_003;
     uint256 public constant LOG_MONSTER_DEFEATED = 1_000_004;
 
+    bytes32 public constant EIP712_DOMAIN_TYPEHASH =
+        keccak256(
+            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+        );
+    string public constant SIGNIN_TYPE = "SignIn(address user,uint32 time)";
+    bytes32 public constant SIGNIN_TYPEHASH = keccak256(bytes(SIGNIN_TYPE));
+    bytes32 public DOMAIN_SEPARATOR;
+
     /****************************
      * STRUCTS *
      ***************************/
-
-    enum Phase {
-        Commit,
-        Reveal,
-        GameOver,
-        /// @dev In case no commit/reveal is needed, we don't need commit/reveal phases
-        Other
-    }
 
     struct Team {
         address owner;
@@ -46,7 +46,6 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     }
 
     struct Move {
-        bytes32 commit;
         IMoveV1 move;
         uint256 monsterId;
     }
@@ -56,7 +55,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         Team opponentTeam;
         Move currentChallengerMove;
         Move currentOpponentMove;
-        Phase phase;
+        bool isGameOver;
         uint256 timeout;
         uint256 round;
         address escaped;
@@ -80,8 +79,6 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     struct Mode {
         uint256 timeout;
         address timeoutMove;
-        // on chains with privacy features like Oasis Sapphire, we don't need a commit reveal scheme
-        bool needsCommitReveal;
     }
 
     struct StatusEffectWrapperView {
@@ -93,6 +90,18 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     struct StatusEffectsContainer {
         uint256 statusEffectCount;
         mapping(uint256 => IBaseStatusEffectV1.StatusEffectWrapper) statusEffects;
+    }
+
+    struct SignatureRSV {
+        bytes32 r;
+        bytes32 s;
+        uint256 v;
+    }
+
+    struct SignIn {
+        address user;
+        uint32 time;
+        SignatureRSV rsv;
     }
 
     /****************************
@@ -136,10 +145,35 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
      * MODS *
      ***************************/
 
-    modifier isInMatch(uint256 matchId) {
+    modifier authenticated(SignIn calldata auth) {
+        // Must be signed within 24 hours ago.
+        require(auth.time > (block.timestamp - (60 * 60 * 24)));
+
+        // Validate EIP-712 sign-in authentication.
+        bytes32 authdataDigest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                DOMAIN_SEPARATOR,
+                keccak256(abi.encode(SIGNIN_TYPEHASH, auth.user, auth.time))
+            )
+        );
+
+        address recovered_address = ecrecover(
+            authdataDigest,
+            uint8(auth.rsv.v),
+            auth.rsv.r,
+            auth.rsv.s
+        );
+
+        require(auth.user == recovered_address, "Invalid Sign-In");
+
+        _;
+    }
+
+    modifier isInMatch(SignIn calldata auth, uint256 matchId) {
         require(
-            matches[matchId].challengerTeam.owner == msg.sender ||
-                matches[matchId].opponentTeam.owner == msg.sender,
+            matches[matchId].challengerTeam.owner == auth.user ||
+                matches[matchId].opponentTeam.owner == auth.user,
             "MatchMakerV3: not your match"
         );
         _;
@@ -164,13 +198,24 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         monsterApi = _monsterApi;
         moveExecutor = _moveExecutor;
         logger = _logger;
+
+        DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                EIP712_DOMAIN_TYPEHASH,
+                keccak256("OnChainBattles.SignIn"),
+                keccak256("1"),
+                block.chainid,
+                address(this)
+            )
+        );
     }
 
     function createAndJoin(
+        SignIn calldata auth,
         uint256 mode,
         IMonsterApiV1.Monster firstMonster,
         IMonsterApiV1.Monster secondMonster
-    ) external {
+    ) external authenticated(auth) {
         uint256 firstMonsterTokenId = monsterApi.createMonsterByName(
             firstMonster
         );
@@ -178,121 +223,64 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             secondMonster
         );
 
-        if (accountToMatch[msg.sender] != 0) {
-            withdrawFromMatch(accountToMatch[msg.sender]);
+        if (accountToMatch[auth.user] != 0) {
+            withdrawFromMatch(auth, accountToMatch[auth.user]);
         } else {
-            withdraw(mode);
+            withdraw(auth, mode);
         }
 
-        join(mode, firstMonsterTokenId, secondMonsterTokenId);
+        join(auth.user, mode, firstMonsterTokenId, secondMonsterTokenId);
     }
 
-    function withdraw(uint256 mode) public {
-        if (queuedTeams[mode].owner == msg.sender) {
+    function withdraw(
+        SignIn calldata auth,
+        uint256 mode
+    ) public authenticated(auth) {
+        if (queuedTeams[mode].owner == auth.user) {
             delete queuedTeams[mode];
-            emit WithdrawnBeforeMatch(msg.sender);
+            emit WithdrawnBeforeMatch(auth.user);
         }
     }
 
-    function withdrawFromMatch(uint256 matchId) public isInMatch(matchId) {
+    function withdrawFromMatch(
+        SignIn calldata auth,
+        uint256 matchId
+    ) public authenticated(auth) isInMatch(auth, matchId) {
         if (matches[matchId].escaped == address(0)) {
-            matches[matchId].escaped = msg.sender;
+            matches[matchId].escaped = auth.user;
             if (address(leaderboard) != address(0)) {
-                leaderboard.addEscape(msg.sender);
+                leaderboard.addEscape(auth.user);
             }
         }
-        accountToMatch[msg.sender] = 0;
-    }
-
-    function commit(
-        uint256 matchId,
-        bytes32 _commit
-    ) external payable isInMatch(matchId) {
-        Match storage _match = matches[matchId];
-
-        require(
-            _match.phase == Phase.Commit,
-            _match.phase == Phase.GameOver
-                ? "MatchMakerV3: game over"
-                : "MatchMakerV3: not in commit phase"
-        );
-
-        logger.setMatchId(matchId);
-        logger.setRound(_match.round);
-
-        bool isChallenger = _match.challengerTeam.owner == msg.sender;
-        Move storage relevantMove = isChallenger
-            ? _match.currentChallengerMove
-            : _match.currentOpponentMove;
-
-        require(relevantMove.commit == 0, "MatchMakerV3: already committed");
-        relevantMove.commit = _commit;
-
-        assignMonstersToMove(_match, relevantMove, isChallenger);
-
-        // if both players have committed, move to reveal phase
-        if (
-            _match.currentChallengerMove.commit != 0 &&
-            _match.currentOpponentMove.commit != 0
-        ) {
-            _match.phase = Phase.Reveal;
-        }
-
-        logger.log(LOG_COMMIT, msg.sender, _commit);
-
-        logger.setRound(0);
-        logger.setMatchId(0);
+        accountToMatch[auth.user] = 0;
     }
 
     function reveal(
+        SignIn calldata auth,
         uint256 matchId,
-        address move,
-        /// @dev if no commit reveal scheme is needed, the secret is ignore
-        bytes32 secret
-    ) public isInMatch(matchId) {
+        address move
+    ) public authenticated(auth) isInMatch(auth, matchId) {
         Match storage _match = matches[matchId];
-
-        if (modes[_match.mode].needsCommitReveal) {
-            require(
-                _match.phase == Phase.Reveal,
-                "MatchMakerV3: not in reveal phase"
-            );
-        }
 
         /// @dev Write temp state to the logger
         logger.setMatchId(matchId);
         logger.setRound(_match.round);
 
-        executeMovesAndApplyEffects(_match, msg.sender, move, secret);
+        executeMovesAndApplyEffects(_match, auth.user, move);
 
         /// @dev This resets the logger for the next execution (just temp state)
         logger.setRound(0);
         logger.setMatchId(0);
     }
 
-    function goToRevealPhase(uint256 matchId) external {
-        // Permit moving to reveal phase if the match timeout has expired
-        Match storage _match = matches[matchId];
-        require(
-            _match.phase == Phase.Commit,
-            "MatchMakerV3: not in commit phase"
-        );
-        require(
-            block.timestamp > _match.timeout,
-            "MatchMakerV3: timeout not expired"
-        );
-        _match.phase = Phase.Reveal;
-    }
-
-    function updateBlockTimestamp() external {
-        // This function is only used for mining a block (which will gen a new timestamp)
-    }
-
     /**************************************************************************
      * EXTERNAL VIEW FUNCTIONS
      *************************************************************************/
 
-    function getMatchById(uint256 id) public view returns (MatchView memory) {
+    function getMatchById(
+        SignIn calldata auth,
+        uint256 id
+    ) public view authenticated(auth) returns (MatchView memory) {
         Match storage _match = matches[id];
         return
             MatchView(
@@ -313,10 +301,11 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     }
 
     function getMatchByUser(
+        SignIn calldata auth,
         address user
-    ) external view returns (MatchView memory) {
+    ) external view authenticated(auth) returns (MatchView memory) {
         uint256 matchId = accountToMatch[user];
-        return getMatchById(matchId);
+        return getMatchById(auth, matchId);
     }
 
     function getStatusEffectsArray(
@@ -363,12 +352,10 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     function setMode(
         uint256 mode,
         uint256 timeout,
-        address timeoutMove,
-        bool needsCommitReveal
+        address timeoutMove
     ) external onlyOwner {
         modes[mode].timeout = timeout;
         modes[mode].timeoutMove = timeoutMove;
-        modes[mode].needsCommitReveal = needsCommitReveal;
     }
 
     /**************************************************************************
@@ -452,21 +439,19 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             }
 
             // reset moves
-            _match.currentChallengerMove.commit = 0;
             _match.currentChallengerMove.move = IMoveV1(address(0));
             _match.currentChallengerMove.monsterId = 0;
-            _match.currentOpponentMove.commit = 0;
             _match.currentOpponentMove.move = IMoveV1(address(0));
             _match.currentOpponentMove.monsterId = 0;
 
-            // set back to commit phase or if one player has no monster left, set to GameOver
+            // set to game over eventually
             if (
                 (monsters[_match.challengerTeam.firstMonsterId].hp == 0 &&
                     monsters[_match.challengerTeam.secondMonsterId].hp == 0) ||
                 (monsters[_match.opponentTeam.firstMonsterId].hp == 0 &&
                     monsters[_match.opponentTeam.secondMonsterId].hp == 0)
             ) {
-                _match.phase = Phase.GameOver;
+                _match.isGameOver = true;
 
                 logger.log(
                     LOG_GAME_OVER,
@@ -487,9 +472,6 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
                     }
                 }
             } else {
-                if (modes[_match.mode].needsCommitReveal) {
-                    _match.phase = Phase.Commit;
-                }
                 _match.timeout = block.timestamp + modes[_match.mode].timeout;
             }
         }
@@ -498,23 +480,12 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     function executeMovesAndApplyEffects(
         Match storage _match,
         address player,
-        address move,
-        bytes32 secret
+        address move
     ) internal {
-        revealMove(_match, msg.sender, move, secret);
+        revealMove(_match, player, move);
 
-        if (modes[_match.mode].needsCommitReveal) {
-            if (!hasOtherPlayerCommitted(_match, msg.sender)) {
-                revealTimeoutMove(
-                    _match,
-                    getOtherPlayerInMatch(_match, msg.sender)
-                );
-            }
-        } else if (block.timestamp > _match.timeout) {
-            revealTimeoutMove(
-                _match,
-                getOtherPlayerInMatch(_match, msg.sender)
-            );
+        if (block.timestamp > _match.timeout) {
+            revealTimeoutMove(_match, getOtherPlayerInMatch(_match, player));
         }
 
         executeMoves(_match);
@@ -552,27 +523,15 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         }
     }
 
-    function hasOtherPlayerCommitted(
-        Match memory _match,
-        address player
-    ) internal pure returns (bool) {
-        if (_match.challengerTeam.owner == player) {
-            return _match.currentOpponentMove.commit != 0;
-        } else if (_match.opponentTeam.owner == player) {
-            return _match.currentChallengerMove.commit != 0;
-        } else {
-            revert("MatchMakerV3: no other player in match");
-        }
-    }
-
     function join(
+        address player,
         uint256 mode,
         uint256 firstMonsterId,
         uint256 secondMonsterId
     ) internal {
-        uint256 existingMatchId = accountToMatch[msg.sender];
+        uint256 existingMatchId = accountToMatch[player];
         require(
-            accountToMatch[msg.sender] == 0 ||
+            accountToMatch[player] == 0 ||
                 matches[existingMatchId].escaped != address(0),
             "MatchMakerV3: already in match"
         );
@@ -581,25 +540,21 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         monsters[secondMonsterId] = monsterApi.getMonster(secondMonsterId);
 
         if (queuedTeams[mode].firstMonsterId == 0) {
-            queuedTeams[mode] = Team(
-                msg.sender,
-                firstMonsterId,
-                secondMonsterId
-            );
+            queuedTeams[mode] = Team(player, firstMonsterId, secondMonsterId);
             return;
         }
 
         require(
-            queuedTeams[mode].owner != msg.sender,
+            queuedTeams[mode].owner != player,
             "MatchMakerV3: cannot play against yourself"
         );
 
         matches[++matchCount] = Match(
             queuedTeams[mode],
-            Team(msg.sender, firstMonsterId, secondMonsterId),
-            Move(0, IMoveV1(address(0)), 0),
-            Move(0, IMoveV1(address(0)), 0),
-            modes[mode].needsCommitReveal ? Phase.Commit : Phase.Other,
+            Team(player, firstMonsterId, secondMonsterId),
+            Move(IMoveV1(address(0)), 0),
+            Move(IMoveV1(address(0)), 0),
+            false,
             block.timestamp + modes[mode].timeout,
             0,
             address(0),
@@ -607,7 +562,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         );
 
         accountToMatch[queuedTeams[mode].owner] = matchCount;
-        accountToMatch[msg.sender] = matchCount;
+        accountToMatch[player] = matchCount;
 
         delete queuedTeams[mode];
     }
@@ -639,8 +594,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     function revealMove(
         Match storage _match,
         address player,
-        address move,
-        bytes32 secret
+        address move
     ) internal {
         Move storage relevantMove = _match.challengerTeam.owner == player
             ? _match.currentChallengerMove
@@ -650,16 +604,6 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             address(relevantMove.move) == address(0),
             "MatchMakerV3: already revealed"
         );
-
-        // only do these checks if the move is not the timeout move + if we actually need a commit reveal scheme
-        if (modes[_match.mode].needsCommitReveal) {
-            // verify if the commit was made with the secret
-            require(
-                keccak256(abi.encodePacked(move, secret)) ==
-                    relevantMove.commit,
-                "MatchMakerV3: invalid secret"
-            );
-        }
 
         relevantMove.move = IMoveV1(move);
 
