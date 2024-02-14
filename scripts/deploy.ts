@@ -112,7 +112,7 @@ async function main() {
   );
   const { address: wallBreakerMoveAddress } = await deployContract(
     "WallBreakerMove",
-    [await confusedEffect.getAddress()],
+    [await confusedEffect.getAddress(), 80],
   );
 
   const { address: cleansingShieldMoveAddress } = await deployContract(

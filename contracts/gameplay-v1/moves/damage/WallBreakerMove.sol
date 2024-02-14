@@ -11,9 +11,11 @@ contract WallBreakerMove is MoveV1 {
     uint8 public constant CONFUSED_EFFECT_DURATION = 2;
 
     IBaseStatusEffectV1 public confusedEffect;
+    uint8 public chance;
 
-    constructor(IBaseStatusEffectV1 _confusedEffect) {
+    constructor(IBaseStatusEffectV1 _confusedEffect, uint8 _chance) {
         confusedEffect = _confusedEffect;
+        chance = _chance;
     }
 
     function execute(
@@ -35,7 +37,7 @@ contract WallBreakerMove is MoveV1 {
 
         // 80% chance that wall is broken
         bool logEffects = false;
-        if (isRandomHit(input.randomness, "wallBreaker", 100)) {
+        if (isRandomHit(input.randomness, "wallBreaker", chance)) {
             uint256 effectsLengthBefore = input.defenderStatusEffects.length;
             input.defenderStatusEffects = MoveLibV1.removeStatusEffectsByGroup(
                 input.defenderStatusEffects,
@@ -113,5 +115,9 @@ contract WallBreakerMove is MoveV1 {
         } else {
             secondElement = IMonsterV1.Element.None;
         }
+    }
+
+    function setChance(uint8 _chance) external onlyDeployer {
+        chance = _chance;
     }
 }
