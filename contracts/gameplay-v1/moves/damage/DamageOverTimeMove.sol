@@ -13,6 +13,10 @@ contract DamageOverTimeMove is MoveV1 {
     IBaseStatusEffectV1 public damageOverTimeEffect;
     uint8 public chance;
 
+    /// @dev for testing purposes
+    bool private isCriticalHitEnforced;
+    bool private isCriticalHitDisabled;
+
     constructor(IBaseStatusEffectV1 _damageOverTimeEffect, uint8 _chance) {
         damageOverTimeEffect = _damageOverTimeEffect;
         chance = _chance;
@@ -52,12 +56,14 @@ contract DamageOverTimeMove is MoveV1 {
         }
 
         // finally apply the potential critical hit after the damage over time effect
-        bool isCriticalHit;
-        (damage, isCriticalHit) = CriticalHit.applyCriticalHit(
-            damage,
-            input.randomness,
-            input.attackerStatusEffects
-        );
+        bool isCriticalHit = isCriticalHitEnforced;
+        if (!isCriticalHitDisabled) {
+            (damage, isCriticalHit) = CriticalHit.applyCriticalHit(
+                damage,
+                input.randomness,
+                input.attackerStatusEffects
+            );
+        }
 
         logger.log(
             uint256(LogActions.Action.Damage),
@@ -89,5 +95,23 @@ contract DamageOverTimeMove is MoveV1 {
 
     function moveType() external pure returns (MoveType) {
         return MoveType.Damage;
+    }
+
+    function setChance(uint8 _chance) external onlyDeployer {
+        chance = _chance;
+    }
+
+    function setCriticalHitEnforced(
+        bool _isCriticalHitEnforced
+    ) external onlyDeployer {
+        isCriticalHitEnforced = _isCriticalHitEnforced;
+        isCriticalHitDisabled = false;
+    }
+
+    function setCriticalHitDisabled(
+        bool _isCriticalHitDisabled
+    ) external onlyDeployer {
+        isCriticalHitDisabled = _isCriticalHitDisabled;
+        isCriticalHitEnforced = false;
     }
 }

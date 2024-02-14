@@ -82,6 +82,7 @@ describe("OCB", function () {
     await eventLogger.addWriter(await moveExecutorV1.getAddress());
 
     return {
+      owner,
       account2,
       account3,
       eventLogger,
@@ -93,6 +94,7 @@ describe("OCB", function () {
   }
 
   async function deployAttacks(
+    deployer: Signer,
     logger: EventLoggerV1,
     moveExecutorV1: MoveExecutorV1,
   ) {
@@ -102,6 +104,7 @@ describe("OCB", function () {
     const damageOverTimeEffect = await DamageOverTimeEffect.deploy();
     await damageOverTimeEffect.setLogger(await logger.getAddress());
     await damageOverTimeEffect.addExecutor(await moveExecutorV1.getAddress());
+    await damageOverTimeEffect.addExecutor(await deployer.getAddress());
     await logger.addWriter(await damageOverTimeEffect.getAddress());
 
     const DamageOverTimeMove =
@@ -112,6 +115,7 @@ describe("OCB", function () {
     );
     await damageOverTimeMove.setLogger(await logger.getAddress());
     await damageOverTimeMove.addExecutor(await moveExecutorV1.getAddress());
+    await damageOverTimeMove.addExecutor(await deployer.getAddress());
     await logger.addWriter(await damageOverTimeMove.getAddress());
 
     const FoggedEffect = await ethers.getContractFactory("FoggedEffect");
@@ -133,6 +137,7 @@ describe("OCB", function () {
     const cloudCoverEffect = await CloudCoverEffect.deploy(0);
     await cloudCoverEffect.setLogger(await logger.getAddress());
     await cloudCoverEffect.addExecutor(await moveExecutorV1.getAddress());
+    await cloudCoverEffect.addExecutor(await deployer.getAddress());
     await logger.addWriter(await cloudCoverEffect.getAddress());
 
     const CloudCoverMove = await ethers.getContractFactory("CloudCoverMove");
@@ -208,9 +213,11 @@ describe("OCB", function () {
     const WallBreakerMove = await ethers.getContractFactory("WallBreakerMove");
     const wallBreakerMove = await WallBreakerMove.deploy(
       await confusedEffect.getAddress(),
+      80,
     );
     await wallBreakerMove.setLogger(await logger.getAddress());
     await wallBreakerMove.addExecutor(await moveExecutorV1.getAddress());
+    await wallBreakerMove.addExecutor(await deployer.getAddress());
     await logger.addWriter(await wallBreakerMove.getAddress());
 
     const ElementalWallEffect = await ethers.getContractFactory(
@@ -232,6 +239,33 @@ describe("OCB", function () {
     await elementalWallMove.addExecutor(await moveExecutorV1.getAddress());
     await logger.addWriter(await elementalWallMove.getAddress());
 
+    const TailwindEffect = await ethers.getContractFactory("TailwindEffect");
+    const tailwindEffect = await TailwindEffect.deploy();
+    await tailwindEffect.setLogger(await logger.getAddress());
+    await tailwindEffect.addExecutor(await moveExecutorV1.getAddress());
+    await tailwindEffect.addExecutor(await damageOverTimeMove.getAddress());
+    await tailwindEffect.addExecutor(await purgeBuffsMove.getAddress());
+    await tailwindEffect.addExecutor(await wallBreakerMove.getAddress());
+    await tailwindEffect.addExecutor(await controlMove.getAddress());
+    await logger.addWriter(await tailwindEffect.getAddress());
+
+    const TailwindMove = await ethers.getContractFactory("TailwindMove");
+    const tailwindMove = await TailwindMove.deploy(
+      await tailwindEffect.getAddress(),
+    );
+    await tailwindMove.setLogger(await logger.getAddress());
+    await tailwindMove.addExecutor(await moveExecutorV1.getAddress());
+    await logger.addWriter(await tailwindMove.getAddress());
+
+    const CleansingShieldMove = await ethers.getContractFactory(
+      "CleansingShieldMove",
+    );
+    const cleansingShieldMove = await CleansingShieldMove.deploy();
+    await cleansingShieldMove.setLogger(await logger.getAddress());
+    await cleansingShieldMove.addExecutor(await moveExecutorV1.getAddress());
+    await cleansingShieldMove.addExecutor(await deployer.getAddress());
+    await logger.addWriter(await cleansingShieldMove.getAddress());
+
     return {
       damageOverTimeAttack: damageOverTimeMove,
       cloudCoverMove: cloudCoverMove,
@@ -249,6 +283,8 @@ describe("OCB", function () {
       wallBreakerMove,
       elementalWallEffect,
       elementalWallMove,
+      tailwindMove,
+      cleansingShieldMove,
     };
   }
 
@@ -396,6 +432,7 @@ describe("OCB", function () {
 
     it("should should decrease the strength of defense auras", async function () {
       const {
+        owner,
         account2,
         account3,
         monsterApiV1,
@@ -412,6 +449,7 @@ describe("OCB", function () {
       expect(await matchMaker.matchCount()).to.equal(BigInt(1));
 
       const { defenseAuraMove } = await deployAttacks(
+        owner,
         eventLogger,
         moveExecutorV1,
       );
@@ -467,6 +505,7 @@ describe("OCB", function () {
 
     it("should allow both players to apply a speed boost", async function () {
       const {
+        owner,
         account2,
         account3,
         monsterApiV1,
@@ -478,11 +517,12 @@ describe("OCB", function () {
       await createMockMonsters(monsterApiV1);
 
       await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-      await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+      await matchMaker.connect(account3).createAndJoin(0, "7", "8"); // join with water and nature
 
       expect(await matchMaker.matchCount()).to.equal(BigInt(1));
 
       const { speedAuraMove } = await deployAttacks(
+        owner,
         eventLogger,
         moveExecutorV1,
       );
@@ -515,6 +555,7 @@ describe("OCB", function () {
 
     it("should allow both players to apply a heal (even if makes no sense)", async function () {
       const {
+        owner,
         account2,
         account3,
         monsterApiV1,
@@ -526,11 +567,12 @@ describe("OCB", function () {
       await createMockMonsters(monsterApiV1);
 
       await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-      await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+      await matchMaker.connect(account3).createAndJoin(0, "7", "8"); // join with water and nature
 
       expect(await matchMaker.matchCount()).to.equal(BigInt(1));
 
       const { healMove, purgeBuffsMove } = await deployAttacks(
+        owner,
         eventLogger,
         moveExecutorV1,
       );
@@ -598,6 +640,7 @@ describe("OCB", function () {
 
     it("should destroy a cloud cover with purge buffs", async function () {
       const {
+        owner,
         account2,
         account3,
         monsterApiV1,
@@ -614,6 +657,7 @@ describe("OCB", function () {
       expect(await matchMaker.matchCount()).to.equal(BigInt(1));
 
       const { cloudCoverMove, purgeBuffsMove } = await deployAttacks(
+        owner,
         eventLogger,
         moveExecutorV1,
       );
@@ -639,6 +683,7 @@ describe("OCB", function () {
 
     it("should allow both players to apply a cloud cover", async function () {
       const {
+        owner,
         account2,
         account3,
         monsterApiV1,
@@ -655,6 +700,7 @@ describe("OCB", function () {
       expect(await matchMaker.matchCount()).to.equal(BigInt(1));
 
       const { cloudCoverMove } = await deployAttacks(
+        owner,
         eventLogger,
         moveExecutorV1,
       );
@@ -680,6 +726,7 @@ describe("OCB", function () {
 
     it("should allow basic gameplay", async function () {
       const {
+        owner,
         account2,
         account3,
         monsterApiV1,
@@ -696,6 +743,7 @@ describe("OCB", function () {
       expect(await matchMaker.matchCount()).to.equal(BigInt(1));
 
       const { damageOverTimeAttack } = await deployAttacks(
+        owner,
         eventLogger,
         moveExecutorV1,
       );
@@ -727,6 +775,7 @@ describe("OCB", function () {
 
     it("should execute heal before damage", async () => {
       const {
+        owner,
         account2,
         account3,
         matchMaker,
@@ -743,7 +792,7 @@ describe("OCB", function () {
       const matchId = await matchMaker.matchCount();
 
       const { healMove, damageOverTimeAttack, speedAuraMove, cloudCoverMove } =
-        await deployAttacks(eventLogger, moveExecutorV1);
+        await deployAttacks(owner, eventLogger, moveExecutorV1);
 
       // lets run a speed aura first to make player 2 faster than player 1
       await runAttacks(
@@ -779,6 +828,7 @@ describe("OCB", function () {
 
     it("should support attack auras", async () => {
       const {
+        owner,
         account2,
         account3,
         monsterApiV1,
@@ -799,12 +849,12 @@ describe("OCB", function () {
         controlMove,
         elementalWallEffect,
         elementalWallMove,
-      } = await deployAttacks(eventLogger, moveExecutorV1);
+      } = await deployAttacks(owner, eventLogger, moveExecutorV1);
 
       await cloudCoverEffect.setChance(100);
 
-      await matchMaker.connect(account2).createAndJoin(0, "10", "6"); // Fernopig + Wavepaw
-      await matchMaker.connect(account3).createAndJoin(0, "6", "10"); // Fernopig + Wavepaw
+      await matchMaker.connect(account2).createAndJoin(0, "19", "9"); // Fernopig + Wavepaw
+      await matchMaker.connect(account3).createAndJoin(0, "9", "19"); // Fernopig + Wavepaw
 
       let [, , monster1Hp, , , speed1] = await matchMaker.monsters(1);
       let [, , monster2Hp, , , speed2] = await matchMaker.monsters(3);
@@ -856,9 +906,15 @@ describe("OCB", function () {
       expect(monster2Hp).to.equal(BigInt(57));
     });
 
-    it("should have issues fixed that occured in a battle on 2023-10-20", async () => {
-      const { account2, account3, matchMaker, eventLogger, moveExecutorV1 } =
-        await deploy();
+    it("should have issues fixed that occured in a battle on 2024-02-13", async () => {
+      const {
+        owner,
+        account2,
+        account3,
+        matchMaker,
+        eventLogger,
+        moveExecutorV1,
+      } = await deploy();
 
       const {
         cloudCoverEffect,
@@ -871,12 +927,149 @@ describe("OCB", function () {
         controlMove,
         elementalWallEffect,
         elementalWallMove,
-      } = await deployAttacks(eventLogger, moveExecutorV1);
+        tailwindMove,
+        cleansingShieldMove,
+        attackAuraMove,
+        wallBreakerMove,
+      } = await deployAttacks(owner, eventLogger, moveExecutorV1);
+
+      await matchMaker.connect(account2).createAndJoin(0, "33", "25"); // Aquarump + Firizard
+      await matchMaker.connect(account3).createAndJoin(0, "28", "56"); // Chargecrest + Terraform
+
+      let [, , monster1Hp, , , speed1] = await matchMaker.monsters(1);
+      let [, , monster2Hp, , , speed2] = await matchMaker.monsters(2);
+      let [, , monster3Hp, , , speed3] = await matchMaker.monsters(3);
+      let [, , monster4Hp, , , speed4] = await matchMaker.monsters(4);
+
+      expect(monster1Hp).to.equal(BigInt(130));
+      expect(monster2Hp).to.equal(BigInt(120));
+      expect(monster3Hp).to.equal(BigInt(120));
+      expect(monster4Hp).to.equal(BigInt(130));
+
+      expect(speed1).to.equal(BigInt(110));
+      expect(speed2).to.equal(BigInt(130));
+      expect(speed3).to.equal(BigInt(130));
+      expect(speed4).to.equal(BigInt(110));
+
+      const matchId = 1;
+
+      await damageOverTimeAttack.setChance(0);
+
+      await runAttacks(
+        matchMaker,
+        eventLogger,
+        account2,
+        account3,
+        matchId,
+        await damageOverTimeAttack.getAddress(),
+        await tailwindMove.getAddress(),
+      );
+
+      [, , monster1Hp] = await matchMaker.monsters(1);
+      // no damage
+      expect(monster1Hp).to.equal(BigInt(130));
+      await damageOverTimeAttack.setChance(100);
+      await damageOverTimeAttack.setCriticalHitDisabled(true);
+
+      await runAttacks(
+        matchMaker,
+        eventLogger,
+        account2,
+        account3,
+        matchId,
+        await cleansingShieldMove.getAddress(),
+        await damageOverTimeAttack.getAddress(),
+      );
+
+      [, , monster1Hp] = await matchMaker.monsters(1);
+      // 40 damage from attack + 8 from damage over time
+      expect(monster1Hp).to.equal(BigInt(82));
+
+      await cloudCoverEffect.setChance(0);
+      await damageOverTimeAttack.setChance(0);
+      await damageOverTimeAttack.setCriticalHitEnforced(true);
+
+      await runAttacks(
+        matchMaker,
+        eventLogger,
+        account2,
+        account3,
+        matchId,
+        await cloudCoverMove.getAddress(),
+        await damageOverTimeAttack.getAddress(),
+      );
+
+      [, , monster1Hp] = await matchMaker.monsters(1);
+      // 60 damage from attack (critical) + 8 from damage over time
+      expect(monster1Hp).to.equal(BigInt(14));
+
+      await runAttacks(
+        matchMaker,
+        eventLogger,
+        account2,
+        account3,
+        matchId,
+        await attackAuraMove.getAddress(),
+        await tailwindMove.getAddress(),
+      );
+
+      [, , monster1Hp] = await matchMaker.monsters(1);
+      // same hp
+      expect(monster1Hp).to.equal(BigInt(14));
+
+      await wallBreakerMove.setChance(0);
+      await runAttacks(
+        matchMaker,
+        eventLogger,
+        account2,
+        account3,
+        matchId,
+        await cloudCoverMove.getAddress(),
+        await wallBreakerMove.getAddress(),
+      );
+
+      [, , monster1Hp] = await matchMaker.monsters(1);
+      // defeated
+      expect(monster1Hp).to.equal(BigInt(0));
+
+      await runAttacks(
+        matchMaker,
+        eventLogger,
+        account2,
+        account3,
+        matchId,
+        await cloudCoverMove.getAddress(),
+        await wallBreakerMove.getAddress(),
+      );
+    });
+
+    it("should have issues fixed that occured in a battle on 2023-10-20", async () => {
+      const {
+        owner,
+        account2,
+        account3,
+        matchMaker,
+        eventLogger,
+        moveExecutorV1,
+      } = await deploy();
+
+      const {
+        cloudCoverEffect,
+        purgeBuffsMove,
+        cloudCoverMove,
+        speedAuraMove,
+        damageOverTimeAttack,
+        speedAuraEffect,
+        damageOverTimeEffect,
+        controlMove,
+        elementalWallEffect,
+        elementalWallMove,
+      } = await deployAttacks(owner, eventLogger, moveExecutorV1);
 
       await cloudCoverEffect.setChance(100);
 
-      await matchMaker.connect(account2).createAndJoin(0, "10", "6"); // Fernopig + Wavepaw
-      await matchMaker.connect(account3).createAndJoin(0, "6", "10"); // Fernopig + Wavepaw
+      await matchMaker.connect(account2).createAndJoin(0, "19", "9"); // Fernopig + Wavepaw
+      await matchMaker.connect(account3).createAndJoin(0, "9", "19"); // Fernopig + Wavepaw
 
       let [, , monster1Hp, , , speed1] = await matchMaker.monsters(1);
       let [, , monster2Hp, , , speed2] = await matchMaker.monsters(3);
@@ -1036,6 +1229,7 @@ describe("OCB", function () {
 
   it("should store events", async () => {
     const {
+      owner,
       account2,
       account3,
       matchMaker,
@@ -1052,6 +1246,7 @@ describe("OCB", function () {
     const matchId = await matchMaker.matchCount();
 
     const { damageOverTimeAttack, damageOverTimeEffect } = await deployAttacks(
+      owner,
       eventLogger,
       moveExecutorV1,
     );
@@ -1073,6 +1268,7 @@ describe("OCB", function () {
 
   it("should return active status effects in the MatchView", async () => {
     const {
+      owner,
       account2,
       account3,
       matchMaker,
@@ -1088,7 +1284,11 @@ describe("OCB", function () {
 
     const matchId = await matchMaker.matchCount();
 
-    const { cloudCoverMove } = await deployAttacks(eventLogger, moveExecutorV1);
+    const { cloudCoverMove } = await deployAttacks(
+      owner,
+      eventLogger,
+      moveExecutorV1,
+    );
 
     await runAttacks(
       matchMaker,
@@ -1106,6 +1306,7 @@ describe("OCB", function () {
 
   it("should allow support timeouts", async () => {
     const {
+      owner,
       account2,
       account3,
       matchMaker,
@@ -1122,6 +1323,7 @@ describe("OCB", function () {
     const matchId = await matchMaker.matchCount();
 
     const { damageOverTimeAttack } = await deployAttacks(
+      owner,
       eventLogger,
       moveExecutorV1,
     );
@@ -1160,6 +1362,7 @@ describe("OCB", function () {
 
   it("should count wins in leaderboard", async () => {
     const {
+      owner,
       account2,
       account3,
       matchMaker,
@@ -1177,6 +1380,7 @@ describe("OCB", function () {
     const matchId = await matchMaker.matchCount();
 
     const { damageOverTimeAttack } = await deployAttacks(
+      owner,
       eventLogger,
       moveExecutorV1,
     );
@@ -1231,6 +1435,7 @@ describe("OCB", function () {
 
   it("should work without commits", async () => {
     const {
+      owner,
       account2,
       account3,
       matchMaker,
@@ -1251,6 +1456,7 @@ describe("OCB", function () {
     expect(match[1][6]).to.equal(BigInt(0));
 
     const { damageOverTimeAttack, cloudCoverMove } = await deployAttacks(
+      owner,
       eventLogger,
       moveExecutorV1,
     );
@@ -1273,6 +1479,7 @@ describe("OCB", function () {
 
   it("should not without commits if the setting isn't applied", async () => {
     const {
+      owner,
       account2,
       account3,
       matchMaker,
@@ -1292,6 +1499,7 @@ describe("OCB", function () {
     expect(match[1][6]).to.equal(BigInt(0));
 
     const { damageOverTimeAttack, cloudCoverMove } = await deployAttacks(
+      owner,
       eventLogger,
       moveExecutorV1,
     );
