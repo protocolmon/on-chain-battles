@@ -1,13 +1,9 @@
 import { Address } from "viem";
-import contracts from "../../cli/contracts.generated.json";
+// import contracts from "../../cli/contracts.generated.json";
 
-const statusEffectsReversed = Object.fromEntries(
-  Object.entries(contracts.effects).map(([key, value]) => [value, key]),
-);
+const statusEffectsReversed: any = {};
 
-const movesReversed = Object.fromEntries(
-  Object.entries(contracts.attacks).map(([key, value]) => [value, key]),
-);
+const movesReversed: any = {};
 
 export class EventLog {
   id: bigint;

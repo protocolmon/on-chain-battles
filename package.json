@@ -14,6 +14,9 @@
     "cli:sapphire-test": "npx hardhat run ./cli/commander.ts --network sapphire-test",
     "cli:nova": "npx hardhat run ./cli/commander.ts --network nova"
   },
+  "engines": {
+    "node": ">=16.0.0 <17.0.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/polychainmonsters/on-chain-battles.git"
@@ -25,20 +28,37 @@
   },
   "homepage": "https://github.com/polychainmonsters/on-chain-battles#readme",
   "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.6",
+    "@nomicfoundation/hardhat-ethers": "^3.0.5",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.10",
     "@nomicfoundation/hardhat-toolbox-viem": "^1.0.0",
     "@nomicfoundation/hardhat-verify": "^2.0.3",
     "@openzeppelin/hardhat-upgrades": "^2.3.3",
+    "@typechain/ethers-v6": "^0.4.3",
+    "@typechain/hardhat": "^8.0.3",
     "@types/blessed": "^0.1.24",
+    "@types/chai": "^4.3.11",
+    "@types/mocha": "^10.0.6",
+    "@types/prompts": "^2.4.9",
+    "chai": "^4.4.1",
+    "ethers": "^6.11.1",
     "hardhat": "^2.18.2",
     "hardhat-contract-sizer": "^2.10.0",
+    "hardhat-gas-reporter": "^1.0.10",
     "husky": "^8.0.3",
     "lint-staged": "^15.0.2",
     "prettier": "^3.0.3",
     "prettier-plugin-solidity": "^1.2.0",
+    "prompts": "^2.4.2",
+    "solidity-coverage": "^0.8.7",
+    "ts-node": "^10.9.2",
+    "typechain": "^8.3.2",
+    "typescript": "^5.3.3",
     "viem": "^1.18.2"
   },
   "dependencies": {
     "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "@openzeppelin/contracts": "^5.0.1",
     "@openzeppelin/contracts-upgradeable": "^5.0.1",
     "@privy-io/server-auth": "^1.6.0",
     "blessed": "^0.1.81",

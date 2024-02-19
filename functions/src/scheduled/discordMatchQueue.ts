@@ -20,6 +20,8 @@ const shortenAddress = (address: Address) =>
   `${address.slice(0, 6)}...${address.slice(-4)}`;
 
 export const discordMatchQueue = onSchedule("every 1 minutes", async () => {
+  logger.info(`Listening on contract ${matchMakerContractAddress.value()}`);
+
   const client = createPublicClient({
     chain: pmonChain,
     transport: http(),

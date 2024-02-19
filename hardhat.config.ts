@@ -4,6 +4,7 @@ import "@openzeppelin/hardhat-upgrades";
 import "@nomicfoundation/hardhat-verify";
 require("hardhat-contract-sizer");
 
+const BLAST_TESTNET_CHAIN_ID = 168587773;
 const PMON_CHAIN_ID = 16890849097;
 const PMON_RPC = "https://polychain-monsters.alt.technology";
 const PMON_EXPLORER = "https://polychain-monsters-explorer.alt.technology";
@@ -49,6 +50,15 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.sapphire.oasis.io/api",
           browserURL: "https://explorer.sapphire.oasis.io",
+        },
+      },
+      {
+        network: "blast-testnet",
+        chainId: BLAST_TESTNET_CHAIN_ID,
+        urls: {
+          apiURL:
+            "https://api.routescan.io/v2/network/testnet/evm/168587773/etherscan",
+          browserURL: "https://testnet.blastscan.io",
         },
       },
     ],
@@ -97,6 +107,13 @@ const config: HardhatUserConfig = {
         accounts: [process.env.PK || ""],
       }),
       chainId: 23294,
+    },
+    ["blast-testnet"]: {
+      url: "https://blue-proud-needle.blast-sepolia.quiknode.pro/335c888c23d0e251450b3918d77aa2513cf82b14/",
+      chainId: BLAST_TESTNET_CHAIN_ID,
+      ...(process.env.PK && {
+        accounts: [process.env.PK!],
+      }),
     },
   },
   solidity: {

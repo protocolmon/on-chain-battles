@@ -8,7 +8,9 @@ describe("Usernames", function () {
     const [owner] = signers;
 
     const UsernamesV1 = await ethers.getContractFactory("UsernamesV1");
-    const usernamesV1: UsernamesV1 = await UsernamesV1.deploy();
+    const usernamesV1: UsernamesV1 = await UsernamesV1.deploy(
+      await owner.getAddress(),
+    );
 
     return {
       owner,
