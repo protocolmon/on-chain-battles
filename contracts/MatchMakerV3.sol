@@ -34,9 +34,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     enum Phase {
         Commit,
         Reveal,
-        GameOver,
-        /// @dev In case no commit/reveal is needed, we don't need commit/reveal phases
-        Other
+        GameOver
     }
 
     struct Team {
@@ -80,8 +78,6 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     struct Mode {
         uint256 timeout;
         address timeoutMove;
-        // on chains with privacy features like Oasis Sapphire, we don't need a commit reveal scheme
-        bool needsCommitReveal;
     }
 
     struct StatusEffectWrapperView {
@@ -251,13 +247,10 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         bytes32 secret
     ) public isInMatch(matchId) {
         Match storage _match = matches[matchId];
-
-        if (modes[_match.mode].needsCommitReveal) {
-            require(
-                _match.phase == Phase.Reveal,
-                "MatchMakerV3: not in reveal phase"
-            );
-        }
+        require(
+            _match.phase == Phase.Reveal,
+            "MatchMakerV3: not in reveal phase"
+        );
 
         /// @dev Write temp state to the logger
         logger.setMatchId(matchId);
@@ -363,12 +356,10 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     function setMode(
         uint256 mode,
         uint256 timeout,
-        address timeoutMove,
-        bool needsCommitReveal
+        address timeoutMove
     ) external onlyOwner {
         modes[mode].timeout = timeout;
         modes[mode].timeoutMove = timeoutMove;
-        modes[mode].needsCommitReveal = needsCommitReveal;
     }
 
     /**************************************************************************
@@ -487,9 +478,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
                     }
                 }
             } else {
-                if (modes[_match.mode].needsCommitReveal) {
-                    _match.phase = Phase.Commit;
-                }
+                _match.phase = Phase.Commit;
                 _match.timeout = block.timestamp + modes[_match.mode].timeout;
             }
         }
@@ -503,14 +492,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     ) internal {
         revealMove(_match, msg.sender, move, secret);
 
-        if (modes[_match.mode].needsCommitReveal) {
-            if (!hasOtherPlayerCommitted(_match, msg.sender)) {
-                revealTimeoutMove(
-                    _match,
-                    getOtherPlayerInMatch(_match, msg.sender)
-                );
-            }
-        } else if (block.timestamp > _match.timeout) {
+        if (!hasOtherPlayerCommitted(_match, msg.sender)) {
             revealTimeoutMove(
                 _match,
                 getOtherPlayerInMatch(_match, msg.sender)
@@ -599,7 +581,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             Team(msg.sender, firstMonsterId, secondMonsterId),
             Move(0, IMoveV1(address(0)), 0),
             Move(0, IMoveV1(address(0)), 0),
-            modes[mode].needsCommitReveal ? Phase.Commit : Phase.Other,
+            Phase.Commit,
             block.timestamp + modes[mode].timeout,
             0,
             address(0),
@@ -651,15 +633,11 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             "MatchMakerV3: already revealed"
         );
 
-        // only do these checks if the move is not the timeout move + if we actually need a commit reveal scheme
-        if (modes[_match.mode].needsCommitReveal) {
-            // verify if the commit was made with the secret
-            require(
-                keccak256(abi.encodePacked(move, secret)) ==
-                    relevantMove.commit,
-                "MatchMakerV3: invalid secret"
-            );
-        }
+        // verify if the commit was made with the secret
+        require(
+            keccak256(abi.encodePacked(move, secret)) == relevantMove.commit,
+            "MatchMakerV3: invalid secret"
+        );
 
         relevantMove.move = IMoveV1(move);
 

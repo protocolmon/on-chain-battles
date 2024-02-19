@@ -21,7 +21,7 @@ const getCommitHash = (move: string, secret: string = "secret") =>
   );
 
 describe("OCB", function () {
-  async function deploy(useCommitReveal: boolean = true) {
+  async function deploy() {
     const signers = await ethers.getSigners();
     const [owner, account2, account3] = signers;
 
@@ -63,7 +63,6 @@ describe("OCB", function () {
       0,
       ONE_MINUTE,
       await timeoutMove.getAddress(),
-      useCommitReveal,
     );
     await eventLogger.addWriter(await matchMakerV3.getAddress());
 
@@ -156,19 +155,16 @@ describe("OCB", function () {
     matchId: number | bigint,
     move1: string,
     move2?: string,
-    useCommitReveal: boolean = true,
   ): Promise<any[]> {
     const events = [];
 
-    if (useCommitReveal) {
+    events.push(
+      ...(await commit(matchMaker, eventLogger, player1, matchId, move1)),
+    );
+    if (move2) {
       events.push(
-        ...(await commit(matchMaker, eventLogger, player1, matchId, move1)),
+        ...(await commit(matchMaker, eventLogger, player2, matchId, move2)),
       );
-      if (move2) {
-        events.push(
-          ...(await commit(matchMaker, eventLogger, player2, matchId, move2)),
-        );
-      }
     }
 
     events.push(
@@ -1198,98 +1194,5 @@ describe("OCB", function () {
 
     const allStats = await leaderboardV1.getAllStats(0);
     expect(allStats.length).to.equal(2);
-  });
-
-  it("should work without commits", async () => {
-    const {
-      owner,
-      account2,
-      account3,
-      matchMaker,
-      monsterApiV1,
-      eventLogger,
-      moveExecutorV1,
-      leaderboardV1,
-    } = await deploy(false);
-
-    await createMockMonsters(monsterApiV1);
-
-    await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-    await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
-
-    const matchId = await matchMaker.matchCount();
-    let match = await matchMaker.getMatchByUser(account2.getAddress());
-    // round should be 0
-    expect(match[1][6]).to.equal(BigInt(0));
-
-    const { damageOverTimeAttack, cloudCoverMove } = await deployAttacks(
-      owner,
-      eventLogger,
-      moveExecutorV1,
-    );
-
-    await runAttacks(
-      matchMaker,
-      eventLogger,
-      account2,
-      account3,
-      matchId,
-      await damageOverTimeAttack.getAddress(),
-      await cloudCoverMove.getAddress(),
-      false,
-    );
-
-    match = await matchMaker.getMatchByUser(account2.getAddress());
-    // round should now be 1 and not zero anymore
-    expect(match[1][6]).to.equal(BigInt(1));
-  });
-
-  it("should not without commits if the setting isn't applied", async () => {
-    const {
-      owner,
-      account2,
-      account3,
-      matchMaker,
-      monsterApiV1,
-      eventLogger,
-      moveExecutorV1,
-    } = await deploy(true);
-
-    await createMockMonsters(monsterApiV1);
-
-    await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
-    await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
-
-    const matchId = await matchMaker.matchCount();
-    let match = await matchMaker.getMatchByUser(account2.getAddress());
-    // round should be 0
-    expect(match[1][6]).to.equal(BigInt(0));
-
-    const { damageOverTimeAttack, cloudCoverMove } = await deployAttacks(
-      owner,
-      eventLogger,
-      moveExecutorV1,
-    );
-
-    let errorThrown = false;
-    try {
-      await runAttacks(
-        matchMaker,
-        eventLogger,
-        account2,
-        account3,
-        matchId,
-        await damageOverTimeAttack.getAddress(),
-        await cloudCoverMove.getAddress(),
-        false,
-      );
-    } catch (err) {
-      expect((err as Error).message).to.contain(
-        "MatchMakerV3: not in reveal phase",
-      );
-      errorThrown = true;
-    }
-
-    expect(errorThrown).to.be.true;
   });
 });
