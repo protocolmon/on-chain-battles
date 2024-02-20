@@ -45,7 +45,8 @@ contract PurgeBuffsMove is MoveV1 {
         (damage, isCriticalHit) = CriticalHit.applyCriticalHit(
             damage,
             input.randomness,
-            input.attackerStatusEffects
+            input.attackerStatusEffects,
+            false
         );
 
         logger.log(

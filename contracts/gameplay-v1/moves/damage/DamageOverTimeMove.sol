@@ -61,7 +61,8 @@ contract DamageOverTimeMove is MoveV1 {
             (damage, isCriticalHit) = CriticalHit.applyCriticalHit(
                 damage,
                 input.randomness,
-                input.attackerStatusEffects
+                input.attackerStatusEffects,
+                isCriticalHitEnforced
             );
         }
 

@@ -8,7 +8,8 @@ library CriticalHit {
     function applyCriticalHit(
         uint16 damage,
         uint256 randomness,
-        IBaseStatusEffectV1.StatusEffectWrapper[] memory statusEffects
+        IBaseStatusEffectV1.StatusEffectWrapper[] memory statusEffects,
+        bool isCriticalHitEnforced
     ) internal returns (uint16 returnDamage, bool isCriticalHit) {
         bool isCriticalHitDueToEffect = false;
         for (uint256 i = 0; i < statusEffects.length; i++) {
@@ -25,6 +26,7 @@ library CriticalHit {
         }
 
         isCriticalHit =
+            isCriticalHitEnforced ||
             isCriticalHitDueToEffect ||
             RandomnessLibV1.isRandomHit(randomness, "criticalHitNoEffect", 5); // otherwise 5%
 
