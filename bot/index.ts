@@ -12,9 +12,9 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { polychainMonstersTestnet } from "./chain";
-import { MatchMakerV2 } from "../typechain-types";
+import { MatchMakerV3 } from "../typechain-types";
 import contractApiAbi from "../artifacts/contracts/api/ContractApiV1.sol/ContractApiV1.json";
-import matchMakerAbi from "../artifacts/contracts/MatchMakerV2.sol/MatchMakerV2.json";
+import matchMakerAbi from "../artifacts/contracts/MatchMakerV3.sol/MatchMakerV3.json";
 import usernamesAbi from "../artifacts/contracts/UsernamesV1.sol/UsernamesV1.json";
 
 function sleep(ms: number): Promise<void> {
@@ -159,7 +159,7 @@ async function run() {
 
   const match = (await botClient.readContract(
     matchRequest,
-  )) as MatchMakerV2.MatchViewStruct;
+  )) as MatchMakerV3.MatchViewStruct;
   if (match?.id === BigInt(0)) {
     console.info("No match found for bot, checking queue...");
 
@@ -293,7 +293,7 @@ async function run() {
 
       return sleepAndRun(1_000);
     } catch (err: any) {
-      if (err.message.includes("MatchMakerV2: game over")) {
+      if (err.message.includes("MatchMakerV3: game over")) {
         console.info(`Game over, next iteration will leave...`);
       } else {
         throw err;
@@ -317,7 +317,7 @@ async function run() {
         });
         await botClient.writeContract(withdrawRequest);
       } catch (err: any) {
-        if (err.message.includes("MatchMakerV2: not your match")) {
+        if (err.message.includes("MatchMakerV3: not your match")) {
           // just ignore
         } else {
           throw err;
@@ -344,7 +344,7 @@ async function run() {
       delete parsedFileContent.commit;
       fs.writeFileSync(botFileName, JSON.stringify(parsedFileContent));
     } catch (err: any) {
-      if (err.message.includes("MatchMakerV2: not in reveal phase")) {
+      if (err.message.includes("MatchMakerV3: not in reveal phase")) {
         console.info(`Not in reveal phase yet, waiting...`);
       } else {
         throw err;
