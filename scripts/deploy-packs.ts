@@ -5,17 +5,17 @@ import { deployProxy } from "./utils";
 
 const MAX_TOTAL_SUPPLY = 100_000;
 
-const FACTOR_IN_SATS = parseEther("0.1") / BigInt(MAX_TOTAL_SUPPLY);
+const FACTOR_IN_SATS = parseEther("100") / BigInt(MAX_TOTAL_SUPPLY);
 const FACTOR_IN_SATS_SCALED = FACTOR_IN_SATS * BigInt(10 ** 18);
 
 const config = {
   bondingCurveParams: {
-    // price increases by 0.1 eth / 100_000 supply
+    // price increases by 100 pmon / 100_000 supply
     factor: FACTOR_IN_SATS_SCALED,
     // linear curve
     exponent: 1n,
-    // start price = 1 $
-    c: parseEther("0.00044") * BigInt(10 ** 18),
+    // start price = 0.1 PMON
+    c: parseEther("0.1") * BigInt(10 ** 18),
     maxSupply: BigInt(MAX_TOTAL_SUPPLY),
   },
 };

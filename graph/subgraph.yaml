@@ -1,0 +1,37 @@
+specVersion: 0.0.2
+description: Generic ERC721 Subgraph
+repository: ""
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum/contract
+    name: BondingCurveMons
+    network: pmon
+    source:
+      address: "0xA8A681302A07e4616197Da7Cb811F4fb079Ae8d9"
+      abi: ERC721
+      startBlock: 1
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.4
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - Owner
+        - Contract
+        - Transfer
+        - Epoch
+        - Transaction
+      abis:
+        - name: ERC721
+          file: ./abis/ERC721.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,indexed uint256)
+          handler: handleTransfer
+        - event: NewEpochScheduled(uint256)
+          handler: handleNewEpochScheduled
+        - event: FulfillEpochRevealed(uint256,uint256)
+          handler: handleFulfillEpochRevealed
+        - event: RevealRequested(uint256,uint256)
+          handler: handleRevealRequested
+      file: ./src/mapping.ts

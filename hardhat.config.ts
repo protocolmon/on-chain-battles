@@ -5,9 +5,13 @@ import "@nomicfoundation/hardhat-verify";
 require("hardhat-contract-sizer");
 
 const BLAST_TESTNET_CHAIN_ID = 168587773;
-const PMON_CHAIN_ID = 16890849097;
-const PMON_RPC = "https://polychain-monsters.alt.technology";
-const PMON_EXPLORER = "https://polychain-monsters-explorer.alt.technology";
+const PMON_TESTNET_CHAIN_ID = 16890849097;
+const PMON_TESTNET_RPC = "https://polychain-monsters.alt.technology";
+const PMON_TESTNET_EXPLORER =
+  "https://polychain-monsters-explorer.alt.technology";
+const PMON_CHAIN_ID = 42001;
+const PMON_RPC = "https://rpc.pmon.xyz";
+const PMON_EXPLORER = "https://explorer.pmon.xyz";
 
 const config: HardhatUserConfig = {
   etherscan: {
@@ -18,6 +22,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://sepolia-explorer.arbitrum.io/api",
           browserURL: "https://sepolia-explorer.arbitrum.io",
+        },
+      },
+      {
+        network: "pmon-testnet",
+        chainId: PMON_TESTNET_CHAIN_ID,
+        urls: {
+          apiURL: `${PMON_TESTNET_EXPLORER}/api`,
+          browserURL: PMON_TESTNET_EXPLORER,
         },
       },
       {
@@ -72,8 +84,8 @@ const config: HardhatUserConfig = {
       }),
     },
     pmon: {
-      url: PMON_RPC,
-      chainId: PMON_CHAIN_ID,
+      url: PMON_TESTNET_RPC,
+      chainId: PMON_TESTNET_CHAIN_ID,
       ...(process.env.PK && {
         accounts:
           typeof process.env.PKS_LIST === "undefined"
