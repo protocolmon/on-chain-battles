@@ -35,6 +35,13 @@ type Transfer @entity {
   transactionHash: String!
 }
 
+type SupplyDataPoint @entity {
+  id: ID!
+  timestamp: BigInt!
+  block: BigInt!
+  totalSupply: BigInt!
+}
+
 type EpochCounter @entity {
   id: ID!
   count: BigInt!

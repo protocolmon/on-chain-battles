@@ -8,7 +8,7 @@ dataSources:
     name: BondingCurveMons
     network: pmon
     source:
-      address: "0xA8A681302A07e4616197Da7Cb811F4fb079Ae8d9"
+      address: "0x426A2be1e9AA5A58d3f31595c1E89C54c1EC1baf"
       abi: ERC721
       startBlock: 1
     mapping:
@@ -22,6 +22,7 @@ dataSources:
         - Transfer
         - Epoch
         - Transaction
+        - SupplyDataPoint
       abis:
         - name: ERC721
           file: ./abis/ERC721.json

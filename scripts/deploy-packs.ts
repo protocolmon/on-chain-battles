@@ -53,10 +53,9 @@ async function main() {
     await tokenUriProvider.getAddress(),
   );
 
-  await deployProxy("BondingCurveMons", [
-    "BondingCurveMons",
-    "BMON",
-    config.bondingCurveParams,
+  await deployProxy("BoosterPacks", [
+    "BoosterPacks",
+    "PACK",
     zeroAddress, // @todo: replace with actual blast contract
     owner.address,
     await tokenUriProvider.getAddress(),

@@ -21,7 +21,10 @@ async function main() {
   output.contracts.ContractApiV1 = contractApiV1Address;
 
   if (!process.env.USERNAMES) {
-    const { address: usernamesV1Address } = await deployContract("UsernamesV1");
+    const { address: usernamesV1Address } = await deployContract(
+      "UsernamesV1",
+      [await deployer.getAddress()],
+    );
     output.contracts.UsernamesV1 = usernamesV1Address;
   } else {
     output.contracts.UsernamesV1 = process.env.USERNAMES;
@@ -211,14 +214,12 @@ async function main() {
     "1",
     "47",
     timeoutMoveAddress,
-    true,
   );
 
   await (matchMakerV3 as unknown as MatchMakerV3).setMode(
     "2",
     "182",
     timeoutMoveAddress,
-    true,
   );
 
   output.effects.DamageOverTimeEffect = damageOverTimeEffectAddress;

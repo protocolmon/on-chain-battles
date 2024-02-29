@@ -5,6 +5,7 @@ import {
   NewEpochScheduled as NewEpochScheduledEvent,
   FulfillEpochRevealed as FulfillEpochRevealedEvent,
   RevealRequested as RevealRequestedEvent,
+  Purchase as PurchaseEvent,
 } from "../generated/BondingCurveMons/ERC721";
 import {
   Token,
@@ -14,6 +15,7 @@ import {
   Epoch,
   EpochCounter,
   Transaction,
+  SupplyDataPoint,
 } from "../generated/schema";
 
 export function handleTransfer(event: TransferEvent): void {
@@ -204,4 +206,22 @@ export function handleRevealRequested(event: RevealRequestedEvent): void {
   // generate a new Transaction entity
   let transaction = new Transaction(event.transaction.hash.toHexString());
   transaction.save();
+}
+
+export function handlePurchase(event: PurchaseEvent): void {
+  // lets fetch the total supply
+  let instance = ERC721.bind(event.address);
+  let totalSupply = instance.try_totalSupply();
+
+  if (totalSupply.reverted) {
+    log.error("Failed to fetch total supply", []);
+    return;
+  }
+
+  // create a supply data point
+  let supply = new SupplyDataPoint(event.transaction.hash.toHexString());
+  supply.timestamp = event.block.timestamp;
+  supply.block = event.block.number;
+  supply.totalSupply = totalSupply.value;
+  supply.save();
 }
