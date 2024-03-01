@@ -119,7 +119,7 @@ contract ElementalEchoesTokenUriProvider is
         uint256 tokenId,
         Monster memory monster
     ) external view returns (string memory) {
-        // string memory image = _getImageUrlMonster(monster); // Function to get image URL based on monster's properties
+        string memory image = _getImageUrlMonster(monster);
 
         // Building the JSON metadata string
         string memory json = Base64.encode(
@@ -129,7 +129,7 @@ contract ElementalEchoesTokenUriProvider is
                     _monsterName(monster.element, monster.monsterType),
                     '", ',
                     '"image":"',
-                    "https://drive.polychainmonsters.com/ipfs/QmUMZiwsJyNDkK67WjXi7zKixxUjFLXezq11mSK7e5wDPT/",
+                    image,
                     uint256(monster.monsterType).toString(),
                     "-",
                     uint256(monster.element).toString(),
@@ -403,6 +403,21 @@ contract ElementalEchoesTokenUriProvider is
 
         // If no match is found
         revert("Invalid combination of element and monster type");
+    }
+
+    function _getImageUrlMonster(
+        Monster memory monster
+    ) internal view returns (string memory) {
+        string memory imagePath = string(
+            abi.encodePacked(
+                uint256(monster.monsterType).toString(),
+                "-",
+                uint256(monster.element).toString(),
+                ".jpg"
+            )
+        );
+
+        return string(abi.encodePacked(imageBaseUri, imagePath));
     }
 
     /********* SETTER ************/

@@ -1,5 +1,32 @@
 import { Chain } from "viem";
 
+export const pmon = {
+  id: 42001,
+  name: "PMON Chain",
+  network: "pmon",
+  nativeCurrency: {
+    decimals: 18,
+    name: "PMON",
+    symbol: "PMON",
+  },
+  rpcUrls: {
+    public: {
+      http: ["https://rpc.pmon.xyz"],
+      webSocket: ["wss://rpc.pmon.xyz/ws"],
+    },
+    default: {
+      http: ["https://rpc.pmon.xyz"],
+      webSocket: ["wss://rpc.pmon.xyz/ws"],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "Explorer",
+      url: "https://explorer.pmon.xyz",
+    },
+  },
+} as const satisfies Chain;
+
 export const polychainMonstersTestnet = {
   id: 16890849097,
   name: "Polychain Monsters Testnet",

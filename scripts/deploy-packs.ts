@@ -42,7 +42,7 @@ async function main() {
     "ElementalEchoesTokenUriProvider",
   );
   const tokenUriProvider = await TokenUriProvider.deploy(
-    "" + "https://drive.polychainmonsters.com/ipfs/",
+    "https://drive.polychainmonsters.com/ipfs/QmUMZiwsJyNDkK67WjXi7zKixxUjFLXezq11mSK7e5wDPT/",
     network.name === "blast-testnet"
       ? "QmaLhZrkbPBEux4f6XSmaktwgA3TCxnQzQhwn1ayNEa8qq"
       : "QmYqnHSys9m8dPDWpjPWqnP95FBZCxdpxii3VvzaLqCpss",

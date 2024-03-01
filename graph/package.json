@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "deploy-local": "npm run codegen && npm run build && graph deploy --node http://127.0.0.1:8020/ --ipfs http://127.0.0.1:5001 testnetPolymonBondingCurveMons",
-    "remove-local": "graph remove --node http://127.0.0.1:8020/ testnetPolymonBondingCurveMons",
+    "deploy-local": "npm run codegen && npm run build && graph deploy --node http://127.0.0.1:8020/ --ipfs http://127.0.0.1:5001 bondingCurveMons",
+    "remove-local": "graph remove --node http://127.0.0.1:8020/ bondingCurveMons",
     "codegen": "graph codegen",
     "build": "graph build"
   },
