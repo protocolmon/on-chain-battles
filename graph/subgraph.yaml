@@ -8,7 +8,7 @@ dataSources:
     name: BondingCurveMons
     network: pmon
     source:
-      address: "0xBadDdAF71BE629a390785B424E3337E7c2913E4a"
+      address: "0x5170DdCfE382D4483C6abD8126806f5cC2Ca4B48"
       abi: ERC721
       startBlock: 1
     mapping:
@@ -35,4 +35,8 @@ dataSources:
           handler: handleFulfillEpochRevealed
         - event: RevealRequested(uint256,uint256)
           handler: handleRevealRequested
+        - event: Purchase(address,address,uint256,uint256,uint256)
+          handler: handlePurchase
+        - event: Sale(address,address,uint256,uint256,uint256)
+          handler: handleSale
       file: ./src/mapping.ts

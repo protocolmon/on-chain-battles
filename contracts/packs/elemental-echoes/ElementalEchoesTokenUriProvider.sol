@@ -17,15 +17,15 @@ contract ElementalEchoesTokenUriProvider is
 
     uint256 public constant NUM_OF_TYPES = 4;
 
-    string public imageBaseUri;
-    string public packIpfsHash;
+    string public monsterImageBaseUri;
+    string public packImageUri;
 
     constructor(
-        string memory _imageBaseUri,
-        string memory _packIpfsHash
+        string memory _monsterImageBaseUri,
+        string memory _packImageUri
     ) Ownable(msg.sender) {
-        imageBaseUri = _imageBaseUri;
-        packIpfsHash = _packIpfsHash;
+        monsterImageBaseUri = _monsterImageBaseUri;
+        packImageUri = _packImageUri;
     }
 
     /********* Packs ***********/
@@ -89,15 +89,15 @@ contract ElementalEchoesTokenUriProvider is
         uint256 tokenId
     ) internal view returns (string memory) {
         uint256 packType = _getPackType(tokenId);
-        string memory imagePath;
+        string memory imageUri;
 
         if (packType == 0) {
-            imagePath = packIpfsHash;
+            imageUri = packImageUri;
         } else {
             revert("Invalid pack type");
         }
 
-        return string(abi.encodePacked(imageBaseUri, imagePath));
+        return imageUri;
     }
 
     function _getPackDescription(
@@ -130,10 +130,7 @@ contract ElementalEchoesTokenUriProvider is
                     '", ',
                     '"image":"',
                     image,
-                    uint256(monster.monsterType).toString(),
-                    "-",
-                    uint256(monster.element).toString(),
-                    '.jpg", "attributes":',
+                    '", "attributes":',
                     _getAttributesJson(monster),
                     "}"
                 )
@@ -417,12 +414,12 @@ contract ElementalEchoesTokenUriProvider is
             )
         );
 
-        return string(abi.encodePacked(imageBaseUri, imagePath));
+        return string(abi.encodePacked(monsterImageBaseUri, imagePath));
     }
 
     /********* SETTER ************/
 
     function setImageBaseUri(string memory _uri) external onlyOwner {
-        imageBaseUri = _uri;
+        monsterImageBaseUri = _uri;
     }
 }
