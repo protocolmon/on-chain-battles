@@ -117,7 +117,7 @@ contract BoosterPacks is
 
         // get the price and fees
         uint256 price = tokenIds.length * PRICE;
-        uint256 protocolFee = (price * FEE) / (1 ether); // @todo: is that precision actually necessary ?
+        uint256 protocolFee = (price * FEE) / (1 ether);
 
         // burn the NFTs from the minter
         _burnMultiple(tokenIds);
@@ -127,6 +127,22 @@ contract BoosterPacks is
         Address.sendValue(receiver, price - protocolFee);
 
         emit Sale(msg.sender, receiver, tokenIds.length, price, protocolFee);
+    }
+
+    /** reverse swapping */
+
+    function reverseSwap(
+        uint256 tokenId,
+        address receiver
+    ) external payable nonReentrant {
+        require(msg.value == FEE, "Value too low");
+
+        _burn(tokenId, true);
+        Address.sendValue(feeReceiver, FEE);
+        emit Sale(msg.sender, receiver, 1, PRICE, FEE);
+
+        _mint(receiver, 1);
+        emit Purchase(msg.sender, receiver, 1, PRICE, 0);
     }
 
     function _burnMultiple(uint256[] memory ids) internal {

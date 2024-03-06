@@ -17,6 +17,7 @@ import {
   EpochCounter,
   Transaction,
   SupplyDataPoint,
+  HolderStatsData,
 } from "../generated/schema";
 
 export function handleTransfer(event: TransferEvent): void {
@@ -38,10 +39,16 @@ export function handleTransfer(event: TransferEvent): void {
 
   if (previousOwner == null) {
     previousOwner = new Wallet(event.params.from.toHexString());
+    previousOwner.balance = BigInt.fromI32(0);
+  } else if (previousOwner.balance != null) {
+    previousOwner.balance = previousOwner.balance.minus(BigInt.fromI32(1));
   }
 
   if (newOwner == null) {
     newOwner = new Wallet(event.params.to.toHexString());
+    newOwner.balance = BigInt.fromI32(1);
+  } else if (newOwner.balance != null) {
+    newOwner.balance = newOwner.balance.plus(BigInt.fromI32(1));
   }
 
   if (token == null) {
@@ -90,6 +97,143 @@ export function handleTransfer(event: TransferEvent): void {
   token.save();
   contract.save();
   transfer.save();
+
+  let holderStats = HolderStatsData.load("holderstats");
+  if (holderStats == null) {
+    holderStats = new HolderStatsData("holderstats");
+    holderStats.total = BigInt.fromI32(0);
+    holderStats.items1 = BigInt.fromI32(0);
+    holderStats.items2_3 = BigInt.fromI32(0);
+    holderStats.items4_10 = BigInt.fromI32(0);
+    holderStats.items11_25 = BigInt.fromI32(0);
+    holderStats.items26_50 = BigInt.fromI32(0);
+    holderStats.items51 = BigInt.fromI32(0);
+  }
+
+  if (
+    event.params.from.toHexString() ==
+    "0x0000000000000000000000000000000000000000"
+  ) {
+    // Minting case: Increase total holders count and adjust item counts based on the new owner's balance post-mint.
+    holderStats.total = holderStats.total.plus(BigInt.fromI32(1));
+
+    let newOwnerTokenCountAfterMint =
+      newOwner.balance != null ? newOwner.balance : BigInt.fromI32(0); // After mint, should be at least 1
+
+    // Update item counts based on the new balance after minting.
+    if (newOwnerTokenCountAfterMint.equals(BigInt.fromI32(1))) {
+      holderStats.items1 = holderStats.items1.plus(BigInt.fromI32(1));
+    } else if (newOwnerTokenCountAfterMint.equals(BigInt.fromI32(2))) {
+      holderStats.items2_3 = holderStats.items2_3.plus(BigInt.fromI32(1));
+    } else if (newOwnerTokenCountAfterMint.equals(BigInt.fromI32(4))) {
+      holderStats.items4_10 = holderStats.items4_10.plus(BigInt.fromI32(1));
+    } else if (newOwnerTokenCountAfterMint.equals(BigInt.fromI32(11))) {
+      holderStats.items11_25 = holderStats.items11_25.plus(BigInt.fromI32(1));
+    } else if (newOwnerTokenCountAfterMint.equals(BigInt.fromI32(26))) {
+      holderStats.items26_50 = holderStats.items26_50.plus(BigInt.fromI32(1));
+    } else if (newOwnerTokenCountAfterMint.equals(BigInt.fromI32(51))) {
+      holderStats.items51 = holderStats.items51.plus(BigInt.fromI32(1));
+    }
+  } else if (
+    event.params.to.toHexString() ==
+    "0x0000000000000000000000000000000000000000"
+  ) {
+    // Burning case: Decrease total holders count and adjust item counts based on the previous owner's balance pre-burn.
+    holderStats.total = holderStats.total.minus(BigInt.fromI32(1));
+
+    let previousOwnerTokenCountBeforeBurn =
+      previousOwner.balance != null ? previousOwner.balance : BigInt.fromI32(0); // Before burn, should be at least 1
+
+    // Update item counts based on the balance before burning.
+    if (previousOwnerTokenCountBeforeBurn.equals(BigInt.fromI32(1))) {
+      holderStats.items1 = holderStats.items1.minus(BigInt.fromI32(1));
+    } else if (previousOwnerTokenCountBeforeBurn.equals(BigInt.fromI32(2))) {
+      holderStats.items2_3 = holderStats.items2_3.minus(BigInt.fromI32(1));
+    } else if (previousOwnerTokenCountBeforeBurn.equals(BigInt.fromI32(4))) {
+      holderStats.items4_10 = holderStats.items4_10.minus(BigInt.fromI32(1));
+    } else if (previousOwnerTokenCountBeforeBurn.equals(BigInt.fromI32(11))) {
+      holderStats.items11_25 = holderStats.items11_25.minus(BigInt.fromI32(1));
+    } else if (previousOwnerTokenCountBeforeBurn.equals(BigInt.fromI32(26))) {
+      holderStats.items26_50 = holderStats.items26_50.minus(BigInt.fromI32(1));
+    } else if (previousOwnerTokenCountBeforeBurn.equals(BigInt.fromI32(51))) {
+      holderStats.items51 = holderStats.items51.minus(BigInt.fromI32(1));
+    }
+  } else {
+    if (
+      previousOwner.balance == BigInt.fromI32(0) &&
+      newOwner.balance != null &&
+      newOwner.balance > BigInt.fromI32(1)
+    ) {
+      // this means we lost a holder because the previous owner had only 1 token and the new
+      // owner already was a holder
+      holderStats.total = holderStats.total.minus(BigInt.fromI32(1));
+    } else if (
+      previousOwner.balance != null &&
+      previousOwner.balance >= BigInt.fromI32(1) &&
+      newOwner.balance == BigInt.fromI32(1)
+    ) {
+      // this means we gained a holder because the previous owner had more than 1 token and the new
+      // owner only has 1 token
+      holderStats.total = holderStats.total.plus(BigInt.fromI32(1));
+    }
+
+    // Decrement count for previous owner
+    let previousOwnerTokenCount =
+      previousOwner.balance != null ? previousOwner.balance : BigInt.fromI32(0);
+
+    if (previousOwnerTokenCount.equals(BigInt.fromI32(1))) {
+      // Previously had 2 tokens
+      holderStats.items2_3 = holderStats.items2_3.minus(BigInt.fromI32(1));
+      holderStats.items1 = holderStats.items1.plus(BigInt.fromI32(1));
+    } else if (previousOwnerTokenCount.equals(BigInt.fromI32(3))) {
+      // Previously had 4 tokens
+      holderStats.items4_10 = holderStats.items4_10.minus(BigInt.fromI32(1));
+      holderStats.items2_3 = holderStats.items2_3.plus(BigInt.fromI32(1));
+    } else if (previousOwnerTokenCount.equals(BigInt.fromI32(10))) {
+      // Previously had 11 tokens
+      holderStats.items11_25 = holderStats.items11_25.minus(BigInt.fromI32(1));
+      holderStats.items4_10 = holderStats.items4_10.plus(BigInt.fromI32(1));
+    } else if (previousOwnerTokenCount.equals(BigInt.fromI32(25))) {
+      // Previously had 26 tokens
+      holderStats.items26_50 = holderStats.items26_50.minus(BigInt.fromI32(1));
+      holderStats.items11_25 = holderStats.items11_25.plus(BigInt.fromI32(1));
+    } else if (previousOwnerTokenCount.equals(BigInt.fromI32(50))) {
+      // Previously had 51 tokens
+      holderStats.items51 = holderStats.items51.minus(BigInt.fromI32(1));
+      holderStats.items26_50 = holderStats.items26_50.plus(BigInt.fromI32(1));
+    }
+
+    // Increment count for new owner
+    let newOwnerTokenCount =
+      newOwner.balance != null ? newOwner.balance : BigInt.fromI32(0);
+
+    if (newOwnerTokenCount.equals(BigInt.fromI32(2))) {
+      // Previously had 1 token
+      holderStats.items1 = holderStats.items1.minus(BigInt.fromI32(1));
+      holderStats.items2_3 = holderStats.items2_3.plus(BigInt.fromI32(1));
+    } else if (newOwnerTokenCount.equals(BigInt.fromI32(4))) {
+      // Previously had 3 tokens
+      holderStats.items2_3 = holderStats.items2_3.minus(BigInt.fromI32(1));
+      holderStats.items4_10 = holderStats.items4_10.plus(BigInt.fromI32(1));
+    } else if (newOwnerTokenCount.equals(BigInt.fromI32(11))) {
+      // Previously had 10 tokens
+      holderStats.items4_10 = holderStats.items4_10.minus(BigInt.fromI32(1));
+      holderStats.items11_25 = holderStats.items11_25.plus(BigInt.fromI32(1));
+    } else if (newOwnerTokenCount.equals(BigInt.fromI32(26))) {
+      // Previously had 25 tokens
+      holderStats.items11_25 = holderStats.items11_25.minus(BigInt.fromI32(1));
+      holderStats.items26_50 = holderStats.items26_50.plus(BigInt.fromI32(1));
+    } else if (newOwnerTokenCount.equals(BigInt.fromI32(51))) {
+      // Previously had 50 tokens
+      holderStats.items26_50 = holderStats.items26_50.minus(BigInt.fromI32(1));
+      holderStats.items51 = holderStats.items51.plus(BigInt.fromI32(1));
+    }
+  }
+
+  // Save updated entities
+  previousOwner.save();
+  newOwner.save();
+  holderStats.save();
 
   // generate a new Transaction entity
   let transaction = new Transaction(event.transaction.hash.toHexString());
@@ -161,6 +305,14 @@ export function handleFulfillEpochRevealed(
     if (token == null) {
       log.debug("Token not found: {}", [tokenId.toHexString()]);
       continue;
+    }
+
+    let ownerCallresult = instance.try_ownerOf(tokenId);
+    if (!ownerCallresult.reverted) {
+      token.opener = ownerCallresult.value.toHexString();
+      token.save();
+    } else {
+      log.debug("Failed to fetch opener for token: {}", [token.id]);
     }
 
     // Fetch the new URI for each token

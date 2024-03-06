@@ -2,6 +2,7 @@ type Token @entity {
   id: ID!
   owner: Wallet
   minter: Wallet
+  opener: Wallet
   uri: String
   transfers: [Transfer!]! @derivedFrom(field: "token")
   contract: Contract
@@ -33,6 +34,17 @@ type Transfer @entity {
   timestamp: BigInt!
   block: BigInt!
   transactionHash: String!
+}
+
+type HolderStatsData @entity {
+  id: ID!
+  items1: BigInt!
+  items2_3: BigInt!
+  items4_10: BigInt!
+  items11_25: BigInt!
+  items26_50: BigInt!
+  items51: BigInt!
+  total: BigInt!
 }
 
 type SupplyDataPoint @entity {
