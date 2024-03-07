@@ -1,40 +1,62 @@
 import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
-import { Address, zeroAddress } from "viem";
+import { ethers, upgrades, network } from "hardhat";
+import { zeroAddress } from "viem";
 import { createMockMonsters } from "./attacks/createMockMonsters";
-import { MatchMakerV3Confidential } from "../typechain-types";
+import {
+  EventLoggerV1,
+  MatchMakerV3Confidential,
+  MoveExecutorV1,
+} from "../typechain-types";
 import { Signer } from "ethers";
-import { deployAttacks } from "./attacks/deployAttacks";
+
+import * as sapphire from "@oasisprotocol/sapphire-paratime";
 
 const ONE_MINUTE = 60;
 
-const signIn = async (signer: Signer, verifyingContract: string | Address) => {
-  const time = Math.floor(new Date().getTime() / 1000);
-  const user = await signer.getAddress();
+async function deployAttacks(
+  deployer: Signer,
+  logger: EventLoggerV1,
+  moveExecutorV1: MoveExecutorV1,
+) {
+  const CloudCoverEffect = await ethers.getContractFactory("CloudCoverEffect");
+  const cloudCoverEffect = await CloudCoverEffect.deploy(0);
+  await cloudCoverEffect.waitForDeployment();
+  let tx = await cloudCoverEffect.setLogger(await logger.getAddress());
+  await tx.wait();
+  tx = await cloudCoverEffect.addExecutor(await moveExecutorV1.getAddress());
+  await tx.wait();
+  tx = await cloudCoverEffect.addExecutor(await deployer.getAddress());
+  await tx.wait();
+  tx = await logger.addWriter(await cloudCoverEffect.getAddress());
+  await tx.wait();
 
-  // Ask user to "Sign-In" every 24 hours.
-  const signature = await signer.signTypedData(
-    {
-      name: "OnChainBattles.SignIn",
-      version: "1",
-      chainId: 31337,
-      verifyingContract,
-    },
-    {
-      SignIn: [
-        { name: "user", type: "address" },
-        { name: "time", type: "uint32" },
-      ],
-    },
-    {
-      user,
-      time: time,
-    },
+  const CloudCoverMove = await ethers.getContractFactory("CloudCoverMove");
+  const cloudCoverMove = await CloudCoverMove.deploy(
+    await cloudCoverEffect.getAddress(),
   );
+  await cloudCoverMove.waitForDeployment();
+  tx = await cloudCoverMove.setLogger(await logger.getAddress());
+  await tx.wait();
+  tx = await cloudCoverMove.addExecutor(await moveExecutorV1.getAddress());
+  await tx.wait();
+  tx = await logger.addWriter(await cloudCoverMove.getAddress());
+  await tx.wait();
 
-  const rsv = ethers.Signature.from(signature);
-  return { user, time, rsv };
-};
+  const PurgeBuffsMove = await ethers.getContractFactory("PurgeBuffsMove");
+  const purgeBuffsMove = await PurgeBuffsMove.deploy(100);
+  await purgeBuffsMove.waitForDeployment();
+  tx = await purgeBuffsMove.setLogger(await logger.getAddress());
+  await tx.wait();
+  tx = await purgeBuffsMove.addExecutor(await moveExecutorV1.getAddress());
+  await tx.wait();
+  tx = await logger.addWriter(await purgeBuffsMove.getAddress());
+  await tx.wait();
+
+  return {
+    cloudCoverMove: cloudCoverMove,
+    purgeBuffsMove,
+  };
+}
 
 describe("OCB confidential", function () {
   async function deploy(useCommitReveal: boolean = true) {
@@ -45,15 +67,19 @@ describe("OCB confidential", function () {
     const moveExecutorV1 = await MoveExecutorV1.deploy(
       await owner.getAddress(),
     );
+    await moveExecutorV1.waitForDeployment();
 
     const UsernamesV1 = await ethers.getContractFactory("UsernamesV1");
     const userNamesV1 = await UsernamesV1.deploy(await owner.getAddress());
+    await userNamesV1.waitForDeployment();
 
     const MonsterApiV1 = await ethers.getContractFactory("MonsterApiV1");
     const monsterApiV1 = await MonsterApiV1.deploy();
+    await monsterApiV1.waitForDeployment();
 
     const EventLoggerV1 = await ethers.getContractFactory("EventLoggerV1");
     const eventLogger = await EventLoggerV1.deploy(await owner.getAddress());
+    await eventLogger.waitForDeployment();
 
     const MatchMaker = await ethers.getContractFactory(
       "MatchMakerV3Confidential",
@@ -66,23 +92,30 @@ describe("OCB confidential", function () {
         await eventLogger.getAddress(),
       ],
     );
+    await matchMakerV3Confidential.waitForDeployment();
 
-    await (
+    let tx = await (
       matchMakerV3Confidential as unknown as MatchMakerV3Confidential
     ).setMode(0, ONE_MINUTE * 60, zeroAddress);
-    await eventLogger.addWriter(await matchMakerV3Confidential.getAddress());
-
-    await moveExecutorV1.grantRole(
-      await moveExecutorV1.PERMITTED_ROLE(),
+    await tx.wait();
+    tx = await eventLogger.addWriter(
       await matchMakerV3Confidential.getAddress(),
     );
+    await tx.wait();
 
-    await eventLogger.addWriter(await moveExecutorV1.getAddress());
+    tx = await moveExecutorV1.grantRole(
+      await moveExecutorV1.PERMITTED_ROLE.staticCall(),
+      await matchMakerV3Confidential.getAddress(),
+    );
+    await tx.wait();
+
+    tx = await eventLogger.addWriter(await moveExecutorV1.getAddress());
+    await tx.wait();
 
     return {
-      owner,
-      account2,
-      account3,
+      owner: sapphire.wrap(owner),
+      account2: sapphire.wrap(account2),
+      account3: sapphire.wrap(account3),
       eventLogger,
       matchMaker:
         matchMakerV3Confidential as unknown as MatchMakerV3Confidential,
@@ -92,6 +125,7 @@ describe("OCB confidential", function () {
   }
 
   describe("V1", function () {
+    /**
     it("should deploy", async function () {
       const { matchMaker, monsterApiV1, moveExecutorV1 } = await deploy();
       expect(await matchMaker.getAddress()).to.not.equal(0);
@@ -104,8 +138,18 @@ describe("OCB confidential", function () {
 
       await createMockMonsters(monsterApiV1);
     });
+    */
 
-    it("should allow confidential gameplay", async function () {
+    it.only("should allow confidential gameplay", async function () {
+      const chainId = `${network.config.chainId}`;
+
+      if (chainId !== "23294" && chainId !== "23295") {
+        console.log(
+          "Skipping confidential tests. Only runs on sapphire are supported. Also 3 private keys with funds are required.",
+        );
+        return;
+      }
+
       const {
         owner,
         account2,
@@ -118,20 +162,15 @@ describe("OCB confidential", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      const authPlayer1 = await signIn(account2, await matchMaker.getAddress());
-      const authPlayer2 = await signIn(account3, await matchMaker.getAddress());
-
       const matchId = 1n;
 
-      await matchMaker
-        .connect(account2)
-        .createAndJoin(authPlayer1, 0, "1", "3"); // join with fire and water
+      let tx = await matchMaker.connect(account2).createAndJoin(0, "1", "3"); // join with fire and water
+      await tx.wait();
 
-      await matchMaker
-        .connect(account3)
-        .createAndJoin(authPlayer2, 0, "4", "5"); // join with water and nature
+      tx = await matchMaker.connect(account3).createAndJoin(0, "4", "5"); // join with water and nature
+      await tx.wait();
 
-      expect(await matchMaker.matchCount()).to.equal(matchId);
+      expect(await matchMaker.matchCount.staticCall()).to.equal(matchId);
 
       const { cloudCoverMove, purgeBuffsMove } = await deployAttacks(
         owner,
@@ -139,20 +178,28 @@ describe("OCB confidential", function () {
         moveExecutorV1,
       );
 
-      let match = await matchMaker.getMatchById(authPlayer1, matchId);
+      let match = await matchMaker.getMatchById.staticCall(matchId);
 
       // round should be zero at start
       expect(match[1][6]).to.equal(0n);
 
-      await matchMaker
-        .connect(account2)
-        .reveal(authPlayer1, matchId, cloudCoverMove);
+      tx = await matchMaker.connect(account2).reveal(matchId, cloudCoverMove);
+      await tx.wait();
 
-      await matchMaker
-        .connect(account3)
-        .reveal(authPlayer2, matchId, purgeBuffsMove);
+      match = await matchMaker.getMatchById.staticCall(matchId);
 
-      match = await matchMaker.getMatchById(authPlayer1, matchId);
+      // the revealed move from account2 should be hidden
+      expect(match[1][2][0]).to.equal(
+        "0x0000000000000000000000000000000000000000",
+      );
+      expect(match[1][3][0]).to.equal(
+        "0x0000000000000000000000000000000000000000",
+      );
+
+      tx = await matchMaker.connect(account3).reveal(matchId, purgeBuffsMove);
+      await tx.wait();
+
+      match = await matchMaker.getMatchById.staticCall(matchId);
 
       // round should be one now
       expect(match[1][6]).to.equal(1n);

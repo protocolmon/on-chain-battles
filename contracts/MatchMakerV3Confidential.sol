@@ -27,14 +27,6 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
     uint256 public constant LOG_GAME_OVER = 1_000_003;
     uint256 public constant LOG_MONSTER_DEFEATED = 1_000_004;
 
-    bytes32 public constant EIP712_DOMAIN_TYPEHASH =
-        keccak256(
-            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-        );
-    string public constant SIGNIN_TYPE = "SignIn(address user,uint32 time)";
-    bytes32 public constant SIGNIN_TYPEHASH = keccak256(bytes(SIGNIN_TYPE));
-    bytes32 public DOMAIN_SEPARATOR;
-
     /****************************
      * STRUCTS *
      ***************************/
@@ -92,18 +84,6 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
         mapping(uint256 => IBaseStatusEffectV1.StatusEffectWrapper) statusEffects;
     }
 
-    struct SignatureRSV {
-        bytes32 r;
-        bytes32 s;
-        uint256 v;
-    }
-
-    struct SignIn {
-        address user;
-        uint32 time;
-        SignatureRSV rsv;
-    }
-
     /****************************
      * STATE *
      ***************************/
@@ -118,7 +98,8 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
 
     /// @dev mode => Team
     mapping(uint256 => Team) public queuedTeams;
-    mapping(uint256 => Match) public matches;
+    // @dev explicitly internal to conceal revealed moves
+    mapping(uint256 => Match) internal matches;
     mapping(uint256 => IMonsterV1.Monster) public monsters;
     mapping(uint256 => StatusEffectsContainer) public statusEffects;
 
@@ -145,35 +126,19 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
      * MODS *
      ***************************/
 
-    modifier authenticated(SignIn calldata auth) {
-        // Must be signed within 24 hours ago.
-        require(auth.time > (block.timestamp - (60 * 60 * 24)));
-
-        // Validate EIP-712 sign-in authentication.
-        bytes32 authdataDigest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                DOMAIN_SEPARATOR,
-                keccak256(abi.encode(SIGNIN_TYPEHASH, auth.user, auth.time))
-            )
+    modifier authenticated() {
+        require(
+            msg.sender != address(0),
+            "MatchMakerV3: msg.sender is zero address"
         );
-
-        address recovered_address = ecrecover(
-            authdataDigest,
-            uint8(auth.rsv.v),
-            auth.rsv.r,
-            auth.rsv.s
-        );
-
-        require(auth.user == recovered_address, "Invalid Sign-In");
 
         _;
     }
 
-    modifier isInMatch(SignIn calldata auth, uint256 matchId) {
+    modifier isInMatch(uint256 matchId) {
         require(
-            matches[matchId].challengerTeam.owner == auth.user ||
-                matches[matchId].opponentTeam.owner == auth.user,
+            matches[matchId].challengerTeam.owner == msg.sender ||
+                matches[matchId].opponentTeam.owner == msg.sender,
             "MatchMakerV3: not your match"
         );
         _;
@@ -193,29 +158,22 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
         IMoveExecutorV1 _moveExecutor,
         IEventLoggerV1 _logger
     ) external initializer {
+        require(
+            msg.sender != address(0),
+            "MatchMakerV3: msg.sender is zero address"
+        );
         __Ownable_init(msg.sender);
 
         monsterApi = _monsterApi;
         moveExecutor = _moveExecutor;
         logger = _logger;
-
-        DOMAIN_SEPARATOR = keccak256(
-            abi.encode(
-                EIP712_DOMAIN_TYPEHASH,
-                keccak256("OnChainBattles.SignIn"),
-                keccak256("1"),
-                block.chainid,
-                address(this)
-            )
-        );
     }
 
     function createAndJoin(
-        SignIn calldata auth,
         uint256 mode,
         IMonsterApiV1.Monster firstMonster,
         IMonsterApiV1.Monster secondMonster
-    ) external authenticated(auth) {
+    ) external authenticated {
         uint256 firstMonsterTokenId = monsterApi.createMonsterByName(
             firstMonster
         );
@@ -223,50 +181,45 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
             secondMonster
         );
 
-        if (accountToMatch[auth.user] != 0) {
-            withdrawFromMatch(auth, accountToMatch[auth.user]);
+        if (accountToMatch[msg.sender] != 0) {
+            withdrawFromMatch(accountToMatch[msg.sender]);
         } else {
-            withdraw(auth, mode);
+            withdraw(mode);
         }
 
-        join(auth.user, mode, firstMonsterTokenId, secondMonsterTokenId);
+        join(msg.sender, mode, firstMonsterTokenId, secondMonsterTokenId);
     }
 
-    function withdraw(
-        SignIn calldata auth,
-        uint256 mode
-    ) public authenticated(auth) {
-        if (queuedTeams[mode].owner == auth.user) {
+    function withdraw(uint256 mode) public authenticated {
+        if (queuedTeams[mode].owner == msg.sender) {
             delete queuedTeams[mode];
-            emit WithdrawnBeforeMatch(auth.user);
+            emit WithdrawnBeforeMatch(msg.sender);
         }
     }
 
     function withdrawFromMatch(
-        SignIn calldata auth,
         uint256 matchId
-    ) public authenticated(auth) isInMatch(auth, matchId) {
+    ) public authenticated isInMatch(matchId) {
         if (matches[matchId].escaped == address(0)) {
-            matches[matchId].escaped = auth.user;
+            matches[matchId].escaped = msg.sender;
             if (address(leaderboard) != address(0)) {
-                leaderboard.addEscape(auth.user);
+                leaderboard.addEscape(msg.sender);
             }
         }
-        accountToMatch[auth.user] = 0;
+        accountToMatch[msg.sender] = 0;
     }
 
     function reveal(
-        SignIn calldata auth,
         uint256 matchId,
         address move
-    ) public authenticated(auth) isInMatch(auth, matchId) {
+    ) public authenticated isInMatch(matchId) {
         Match storage _match = matches[matchId];
 
         /// @dev Write temp state to the logger
         logger.setMatchId(matchId);
         logger.setRound(_match.round);
 
-        executeMovesAndApplyEffects(_match, auth.user, move);
+        executeMovesAndApplyEffects(_match, msg.sender, move);
 
         /// @dev This resets the logger for the next execution (just temp state)
         logger.setRound(0);
@@ -277,11 +230,18 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
      * EXTERNAL VIEW FUNCTIONS
      *************************************************************************/
 
-    function getMatchById(
-        SignIn calldata auth,
-        uint256 id
-    ) public view authenticated(auth) returns (MatchView memory) {
-        Match storage _match = matches[id];
+    function getMatchById(uint256 id) public view returns (MatchView memory) {
+        Match memory _match = matches[id];
+
+        // If only one move is revealed, hide it
+        address currentMove1 = address(_match.currentChallengerMove.move);
+        address currentMove2 = address(_match.currentOpponentMove.move);
+        if (currentMove1 != address(0) && currentMove2 == address(0)) {
+            _match.currentChallengerMove.move = IMoveV1(address(0));
+        } else if (currentMove1 == address(0) && currentMove2 != address(0)) {
+            _match.currentOpponentMove.move = IMoveV1(address(0));
+        }
+
         return
             MatchView(
                 id,
@@ -301,11 +261,10 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
     }
 
     function getMatchByUser(
-        SignIn calldata auth,
         address user
-    ) external view authenticated(auth) returns (MatchView memory) {
+    ) external view returns (MatchView memory) {
         uint256 matchId = accountToMatch[user];
-        return getMatchById(auth, matchId);
+        return getMatchById(matchId);
     }
 
     function getStatusEffectsArray(
