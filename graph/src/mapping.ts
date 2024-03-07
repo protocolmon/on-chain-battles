@@ -353,6 +353,7 @@ export function handleRevealRequested(event: RevealRequestedEvent): void {
     log.debug("Token not found: {}", [event.params.tokenId.toHexString()]);
     return;
   }
+  token.opener = token.owner;
   token.epoch = epoch.id;
   token.save();
 
