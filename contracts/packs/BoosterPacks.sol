@@ -438,4 +438,12 @@ contract BoosterPacks is
     function getBalance() external view returns (uint256) {
         return address(this).balance;
     }
+
+    /**
+     * @dev Returns the starting token ID.
+     * To change the starting token ID, please override this function.
+     */
+    function _startTokenId() internal view override returns (uint256) {
+        return 1;
+    }
 }
