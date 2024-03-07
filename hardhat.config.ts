@@ -3,6 +3,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
 import "@nomicfoundation/hardhat-verify";
 require("hardhat-contract-sizer");
+import "dotenv/config";
 
 const BLAST_TESTNET_CHAIN_ID = 168587773;
 const PMON_TESTNET_CHAIN_ID = 16890849097;
@@ -14,6 +15,9 @@ const PMON_RPC = "https://rpc.pmon.xyz";
 const PMON_EXPLORER = "https://explorer.pmon.xyz";
 
 const config: HardhatUserConfig = {
+  mocha: {
+    timeout: 1000000000,
+  },
   etherscan: {
     customChains: [
       {
@@ -118,16 +122,16 @@ const config: HardhatUserConfig = {
     },
     "sapphire-test": {
       url: "https://testnet.sapphire.oasis.dev",
-      ...(process.env.PK && {
-        accounts: [process.env.PK || ""],
-      }),
+      accounts: [process.env.PK, process.env.PK2, process.env.PK3].filter(
+        (key) => !!key,
+      ) as string[],
       chainId: 23295,
     },
     sapphire: {
       url: "https://sapphire.oasis.io",
-      ...(process.env.PK && {
-        accounts: [process.env.PK || ""],
-      }),
+      accounts: [process.env.PK, process.env.PK2, process.env.PK3].filter(
+        (key) => !!key,
+      ) as string[],
       chainId: 23294,
     },
     ["blast-testnet"]: {
