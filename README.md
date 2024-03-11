@@ -16,7 +16,7 @@ We questioned whether it was possible to simplify the complexity of the smart co
 
 [Oasis Sapphire](https://oasisprotocol.org/sapphire) enables us to eliminate the complex commit-and-reveal logic in the smart contracts. It offers RPCs that handle encrypted transactions and maintain encrypted states within smart contracts. Consequently, players can submit their moves in an encrypted manner without needing to reveal them later. This simplification not only reduces the complexity on the smart contract side but also streamlines frontend handling, leading to fewer bugs.
 
-The implementation of this novel approach to on-chain battles is located in the `MatchMakerV3Confidential` contract. Specifically, the `authenticated` modifier and the reveal function are noteworthy components to examine.
+The implementation of this novel approach to on-chain battles is located in the `MatchMakerV3Confidential` contract. This contract contains less logic and is more straightforward than the original `MatchMakerV3` contract.
 
 ## License
 
