@@ -1,5 +1,5 @@
 import { Address } from "viem";
-import contracts from "../../cli/contracts.generated.json";
+import contracts from "../../tmp/contracts.generated.json";
 
 const statusEffectsReversed = Object.fromEntries(
   Object.entries(contracts.effects).map(([key, value]) => [value, key]),

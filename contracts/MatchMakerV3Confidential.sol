@@ -126,7 +126,8 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
      * MODS *
      ***************************/
 
-    modifier authenticated() {
+    /// @dev For providing a clear error message when the sender is the zero address (on Oasis Sapphire)
+    modifier hasMsgSender() {
         require(
             msg.sender != address(0),
             "MatchMakerV3: msg.sender is zero address"
@@ -167,13 +168,14 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
         monsterApi = _monsterApi;
         moveExecutor = _moveExecutor;
         logger = _logger;
+        matchCount = 200;
     }
 
     function createAndJoin(
         uint256 mode,
         IMonsterApiV1.Monster firstMonster,
         IMonsterApiV1.Monster secondMonster
-    ) external authenticated {
+    ) external hasMsgSender {
         uint256 firstMonsterTokenId = monsterApi.createMonsterByName(
             firstMonster
         );
@@ -190,7 +192,7 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
         join(msg.sender, mode, firstMonsterTokenId, secondMonsterTokenId);
     }
 
-    function withdraw(uint256 mode) public authenticated {
+    function withdraw(uint256 mode) public hasMsgSender {
         if (queuedTeams[mode].owner == msg.sender) {
             delete queuedTeams[mode];
             emit WithdrawnBeforeMatch(msg.sender);
@@ -199,7 +201,7 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
 
     function withdrawFromMatch(
         uint256 matchId
-    ) public authenticated isInMatch(matchId) {
+    ) public hasMsgSender isInMatch(matchId) {
         if (matches[matchId].escaped == address(0)) {
             matches[matchId].escaped = msg.sender;
             if (address(leaderboard) != address(0)) {
@@ -212,7 +214,7 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
     function reveal(
         uint256 matchId,
         address move
-    ) public authenticated isInMatch(matchId) {
+    ) public hasMsgSender isInMatch(matchId) {
         Match storage _match = matches[matchId];
 
         /// @dev Write temp state to the logger
@@ -447,6 +449,23 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
             revealTimeoutMove(_match, getOtherPlayerInMatch(_match, player));
         }
 
+        if (
+            (address(_match.currentChallengerMove.move) != address(0) &&
+                address(_match.currentOpponentMove.move) != address(0))
+        ) {
+            logger.log(
+                LOG_REVEAL,
+                _match.challengerTeam.owner,
+                address(_match.currentChallengerMove.move)
+            );
+
+            logger.log(
+                LOG_REVEAL,
+                _match.opponentTeam.owner,
+                address(_match.currentOpponentMove.move)
+            );
+        }
+
         executeMoves(_match);
     }
 
@@ -566,7 +585,11 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
 
         relevantMove.move = IMoveV1(move);
 
-        logger.log(LOG_REVEAL, player, address(move));
+        assignMonstersToMove(
+            _match,
+            relevantMove,
+            _match.challengerTeam.owner == player
+        );
     }
 
     function revealTimeoutMove(Match storage _match, address player) internal {
@@ -581,8 +604,6 @@ contract MatchMakerV3Confidential is Initializable, OwnableUpgradeable {
         );
 
         relevantMove.move = IMoveV1(modes[_match.mode].timeoutMove);
-
-        logger.log(LOG_REVEAL, player, address(relevantMove.move));
 
         assignMonstersToMove(
             _match,

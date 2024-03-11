@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 import { deployContract, deployProxy } from "./utils";
-import contracts from "../cli/contracts.generated.sapphire.json";
+import contracts from "../tmp/contracts.generated.sapphire.json";
 import { LeaderboardManagerV1, UsernamesV1 } from "../typechain-types";
 
 const usernamesList: string[] = [

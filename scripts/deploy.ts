@@ -44,8 +44,12 @@ async function main() {
 
   output.contracts.EventLoggerV1 = eventLoggerV1Address;
 
+  const matchMakerContract =
+    network.name === "sapphire" ? "MatchMakerV3Confidential" : "MatchMakerV3";
+  console.log(`Deploying ${matchMakerContract}...`);
+
   const { address: matchMakerV3Address, instance: matchMakerV3 } =
-    await deployProxy("MatchMakerV3", [
+    await deployProxy(matchMakerContract, [
       monsterApiV1Address,
       moveExecutorV1Address,
       eventLoggerV1Address,
@@ -298,7 +302,7 @@ async function main() {
 
   // Writing to a JSON file
   fs.writeFileSync(
-    `${__dirname}/../cli/contracts.generated.${network.name}.json`,
+    `${__dirname}/../tmp/contracts.generated.${network.name}.json`,
     JSON.stringify(output, null, 2),
   );
 

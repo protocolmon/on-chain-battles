@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import contracts from "../cli/contracts.generated.json";
+import contracts from "../tmp/contracts.generated.json";
 import { deployContract } from "./utils";
 import {
   ContractApiV1,

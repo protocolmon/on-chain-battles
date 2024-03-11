@@ -1,5 +1,5 @@
 import { ethers, upgrades } from "hardhat";
-import contracts from "../cli/contracts.generated.json";
+import contracts from "../tmp/contracts.generated.json";
 
 async function main() {
   const LeaderboardV1 = await ethers.getContractFactory("LeaderboardV1");

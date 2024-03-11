@@ -26,3 +26,5 @@ cli/contracts.generated.json
 scripts/sourcify
 
 cli/contracts.generated*
+
+tmp/
