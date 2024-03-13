@@ -42,6 +42,10 @@ async function run() {
   } catch (err) {
     console.log(err);
   }
+
+  // sleep for 10 seconds then run again
+  await new Promise((resolve) => setTimeout(resolve, 10_000));
+  return run();
 }
 
 run();

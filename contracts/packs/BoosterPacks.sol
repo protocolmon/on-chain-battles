@@ -217,6 +217,7 @@ contract BoosterPacks is
     }
 
     function fulfillRevealEpoch() external {
+        require(timestampForNextReveal != 0, "No reveal scheduled");
         require(block.timestamp >= timestampForNextReveal, "Not yet");
         _fulfillRevealEpoch();
     }

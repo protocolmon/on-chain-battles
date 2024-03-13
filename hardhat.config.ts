@@ -156,7 +156,7 @@ const config: HardhatUserConfig = {
     ],
   },
   sourcify: {
-    enabled: true,
+    enabled: false,
     apiUrl: "https://sourcify.dev/server",
     browserUrl: "https://repo.sourcify.dev",
   },
