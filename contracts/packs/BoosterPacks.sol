@@ -7,8 +7,6 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-// Blast
-import "../blast/BlastBaseUpgradeable.sol";
 import "erc721a-upgradeable/contracts/ERC721AUpgradeable.sol";
 
 // Interfaces (todo make this generic)
@@ -21,7 +19,6 @@ contract BoosterPacks is
     Initializable,
     ERC721AUpgradeable,
     OwnableUpgradeable,
-    BlastBaseUpgradeable,
     ReentrancyGuardUpgradeable
 {
     event Purchase(
@@ -59,23 +56,20 @@ contract BoosterPacks is
     function initialize(
         string memory args_name,
         string memory args_symbol,
-        IBlast args_blast,
         address payable args_feeReceiver,
         IElementalEchoesTokenUriProvider args_tokenUriProvider
     ) public initializerERC721A initializer {
         __ERC721A_init(args_name, args_symbol);
         __Ownable_init(_msgSender());
-        __BlastBase_init(args_blast, _msgSender());
 
         __ReentrancyGuard_init();
 
-        blast = args_blast;
         feeReceiver = args_feeReceiver;
         tokenUriProvider = args_tokenUriProvider;
 
-        PRICE = 0.1 ether;
-        FEE = 0.01 ether;
-        MAX_SUPPLY = 20_000;
+        PRICE = 5 ether; // aka 5 PMON
+        FEE = 0.05 ether; // aka 0.05 PMON
+        MAX_SUPPLY = 10_000;
     }
 
     /** buying */

@@ -8,7 +8,7 @@ dataSources:
     name: BondingCurveMons
     network: pmon
     source:
-      address: "0x13A551F0eB2937Fe5Ba0146D7C87aF6681B0AE8C"
+      address: "0x861895A82b423a6a2c039a3E47aA11daCCCAac40"
       abi: ERC721
       startBlock: 1
     mapping:

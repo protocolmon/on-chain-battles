@@ -15,7 +15,7 @@ const config = {
     // linear curve
     exponent: 1n,
     // start price = 0.1 PMON
-    c: parseEther("0.1") * BigInt(10 ** 18),
+    c: parseEther("5") * BigInt(10 ** 18),
     maxSupply: BigInt(MAX_TOTAL_SUPPLY),
   },
 };
@@ -54,8 +54,7 @@ async function main() {
   await deployProxy("BoosterPacks", [
     "BoosterPacks",
     "PACK",
-    zeroAddress, // @todo: replace with actual blast contract
-    owner.address,
+    "0x275C1D7a6AD547209f5E29B8f89D370A9E8079eC", // fee receiver
     await tokenUriProvider.getAddress(),
   ]);
 }

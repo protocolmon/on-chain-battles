@@ -20,6 +20,8 @@ import {
   HolderStatsData,
 } from "../generated/schema";
 
+const zeroAddress = "0x0000000000000000000000000000000000000000";
+
 export function handleTransfer(event: TransferEvent): void {
   log.debug("Transfer detected. From: {} | To: {} | TokenID: {}", [
     event.params.from.toHexString(),
@@ -110,10 +112,7 @@ export function handleTransfer(event: TransferEvent): void {
     holderStats.items51 = BigInt.fromI32(0);
   }
 
-  if (
-    event.params.from.toHexString() ==
-    "0x0000000000000000000000000000000000000000"
-  ) {
+  if (event.params.from.toHexString() == zeroAddress) {
     // Minting case: Increase total holders count and adjust item counts based on the new owner's balance post-mint.
     holderStats.total = holderStats.total.plus(BigInt.fromI32(1));
 
@@ -124,38 +123,45 @@ export function handleTransfer(event: TransferEvent): void {
     if (newOwnerTokenCountAfterMint.equals(BigInt.fromI32(1))) {
       holderStats.items1 = holderStats.items1.plus(BigInt.fromI32(1));
     } else if (newOwnerTokenCountAfterMint.equals(BigInt.fromI32(2))) {
+      holderStats.items1 = holderStats.items1.minus(BigInt.fromI32(1));
       holderStats.items2_3 = holderStats.items2_3.plus(BigInt.fromI32(1));
     } else if (newOwnerTokenCountAfterMint.equals(BigInt.fromI32(4))) {
+      holderStats.items2_3 = holderStats.items2_3.minus(BigInt.fromI32(1));
       holderStats.items4_10 = holderStats.items4_10.plus(BigInt.fromI32(1));
     } else if (newOwnerTokenCountAfterMint.equals(BigInt.fromI32(11))) {
+      holderStats.items4_10 = holderStats.items4_10.minus(BigInt.fromI32(1));
       holderStats.items11_25 = holderStats.items11_25.plus(BigInt.fromI32(1));
     } else if (newOwnerTokenCountAfterMint.equals(BigInt.fromI32(26))) {
+      holderStats.items11_25 = holderStats.items11_25.minus(BigInt.fromI32(1));
       holderStats.items26_50 = holderStats.items26_50.plus(BigInt.fromI32(1));
     } else if (newOwnerTokenCountAfterMint.equals(BigInt.fromI32(51))) {
+      holderStats.items26_50 = holderStats.items26_50.minus(BigInt.fromI32(1));
       holderStats.items51 = holderStats.items51.plus(BigInt.fromI32(1));
     }
-  } else if (
-    event.params.to.toHexString() ==
-    "0x0000000000000000000000000000000000000000"
-  ) {
+  } else if (event.params.to.toHexString() == zeroAddress) {
     // Burning case: Decrease total holders count and adjust item counts based on the previous owner's balance pre-burn.
     holderStats.total = holderStats.total.minus(BigInt.fromI32(1));
 
-    let previousOwnerTokenCountBeforeBurn =
+    let previousOwnerTokenCountAfterBurn =
       previousOwner.balance != null ? previousOwner.balance : BigInt.fromI32(0); // Before burn, should be at least 1
 
     // Update item counts based on the balance before burning.
-    if (previousOwnerTokenCountBeforeBurn.equals(BigInt.fromI32(1))) {
+    if (previousOwnerTokenCountAfterBurn.equals(BigInt.fromI32(0))) {
       holderStats.items1 = holderStats.items1.minus(BigInt.fromI32(1));
-    } else if (previousOwnerTokenCountBeforeBurn.equals(BigInt.fromI32(2))) {
+    } else if (previousOwnerTokenCountAfterBurn.equals(BigInt.fromI32(1))) {
+      holderStats.items1 = holderStats.items1.plus(BigInt.fromI32(1));
       holderStats.items2_3 = holderStats.items2_3.minus(BigInt.fromI32(1));
-    } else if (previousOwnerTokenCountBeforeBurn.equals(BigInt.fromI32(4))) {
+    } else if (previousOwnerTokenCountAfterBurn.equals(BigInt.fromI32(3))) {
+      holderStats.items2_3 = holderStats.items2_3.plus(BigInt.fromI32(1));
       holderStats.items4_10 = holderStats.items4_10.minus(BigInt.fromI32(1));
-    } else if (previousOwnerTokenCountBeforeBurn.equals(BigInt.fromI32(11))) {
+    } else if (previousOwnerTokenCountAfterBurn.equals(BigInt.fromI32(10))) {
+      holderStats.items4_10 = holderStats.items4_10.plus(BigInt.fromI32(1));
       holderStats.items11_25 = holderStats.items11_25.minus(BigInt.fromI32(1));
-    } else if (previousOwnerTokenCountBeforeBurn.equals(BigInt.fromI32(26))) {
+    } else if (previousOwnerTokenCountAfterBurn.equals(BigInt.fromI32(25))) {
+      holderStats.items11_25 = holderStats.items11_25.plus(BigInt.fromI32(1));
       holderStats.items26_50 = holderStats.items26_50.minus(BigInt.fromI32(1));
-    } else if (previousOwnerTokenCountBeforeBurn.equals(BigInt.fromI32(51))) {
+    } else if (previousOwnerTokenCountAfterBurn.equals(BigInt.fromI32(50))) {
+      holderStats.items26_50 = holderStats.items26_50.plus(BigInt.fromI32(1));
       holderStats.items51 = holderStats.items51.minus(BigInt.fromI32(1));
     }
   } else {
