@@ -26,21 +26,35 @@ const botClient = createWalletClient({
 async function run() {
   console.info(`Reveal bot running with address ${botClient.account.address}.`);
 
-  const baseParamsBoosterPacks = {
+  // get the latest block
+  const currentBlock = await botClient.getBlock({ blockTag: "latest" });
+
+  // now get the next reveal timestamp
+  const revealTimestamp = (await botClient.readContract({
     account: botAccount,
     address: BOOSTER_PACKS_ADDRESS,
     abi: boosterPacksAbi.abi,
-    gas: GAS_LIMIT,
-  };
+    functionName: "timestampForNextReveal",
+    args: [],
+  })) as bigint;
 
-  try {
-    await botClient.writeContract({
-      ...baseParamsBoosterPacks,
-      functionName: "fulfillRevealEpoch",
-      args: [],
-    });
-  } catch (err) {
-    console.log(err);
+  if (revealTimestamp < currentBlock.timestamp) {
+    const baseParamsBoosterPacks = {
+      account: botAccount,
+      address: BOOSTER_PACKS_ADDRESS,
+      abi: boosterPacksAbi.abi,
+      gas: GAS_LIMIT,
+    };
+
+    try {
+      await botClient.writeContract({
+        ...baseParamsBoosterPacks,
+        functionName: "fulfillRevealEpoch",
+        args: [],
+      });
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   // sleep for 10 seconds then run again

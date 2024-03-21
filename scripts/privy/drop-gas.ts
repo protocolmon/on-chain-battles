@@ -20,7 +20,7 @@ async function run() {
         const userBalance = await ethers.provider.getBalance(
           user.wallet.address,
         );
-        const desiredBalance = ethers.parseEther("0.03");
+        const desiredBalance = ethers.parseEther("0.025");
 
         // Check if balance is less than 0.03 ETH
         if (userBalance < desiredBalance) {

@@ -12,6 +12,7 @@ contract EventLoggerV1 is Ownable, IEventLoggerV1 {
     uint256 private currentMoveExecutorMonster;
     uint256 private currentMoveOpponentMonster;
     uint256 private currentRound;
+    bool public isStorageEnabled;
 
     mapping(uint256 => Log[]) public logsByMatchId;
 
@@ -28,7 +29,11 @@ contract EventLoggerV1 is Ownable, IEventLoggerV1 {
         _;
     }
 
-    constructor(address owner) Ownable(owner) {}
+    /// @dev If storage is enabled then events will be stored as strings on-chain
+    ///      That is useful if chain storage is cheap and no graph server is available
+    constructor(address owner, bool _isStorageEnabled) Ownable(owner) {
+        isStorageEnabled = _isStorageEnabled;
+    }
 
     function log(uint256 action, uint256 val) external hasMatchId isWriter {
         bytes memory data = abi.encode(val);
@@ -151,19 +156,21 @@ contract EventLoggerV1 is Ownable, IEventLoggerV1 {
      *************************************************************************/
 
     function _storeLog(uint256 action, bytes memory data) internal {
-        Log memory newLog = Log({
-            id: count++,
-            action: action,
-            data: data,
-            timestamp: block.timestamp,
-            player: currentMoveExecutor,
-            opponent: currentMoveOpponent,
-            monster: currentMoveExecutorMonster,
-            opponentMonster: currentMoveOpponentMonster,
-            round: currentRound
-        });
+        if (isStorageEnabled) {
+            Log memory newLog = Log({
+                id: count++,
+                action: action,
+                data: data,
+                timestamp: block.timestamp,
+                player: currentMoveExecutor,
+                opponent: currentMoveOpponent,
+                monster: currentMoveExecutorMonster,
+                opponentMonster: currentMoveOpponentMonster,
+                round: currentRound
+            });
 
-        logsByMatchId[currentMatchId].push(newLog);
+            logsByMatchId[currentMatchId].push(newLog);
+        }
 
         emit LogEvent(
             count,

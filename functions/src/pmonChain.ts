@@ -1,28 +1,28 @@
 import { defineChain } from "viem";
 
 export const pmonChain = defineChain({
-  id: 16890849097,
-  name: "Polychain Monsters Testnet",
+  id: 42001,
+  name: "PMON Chain",
   network: "pmon",
   nativeCurrency: {
     decimals: 18,
-    name: "Ether",
-    symbol: "ETH",
+    name: "PMON Token",
+    symbol: "PMON",
   },
   rpcUrls: {
     default: {
-      http: ["https://polychain-monsters.alt.technology"],
-      // webSocket: ["wss://rpc.zora.energy"],
+      http: ["https://rpc.pmon.xyz"],
+      webSocket: ["wss://rpc.pmon.xyz/ws"],
     },
     public: {
-      http: ["https://polychain-monsters.alt.technology"],
-      webSocket: ["wss://rpc.zora.energy"],
+      http: ["https://rpc.pmon.xyz"],
+      webSocket: ["wss://rpc.pmon.xyz/ws"],
     },
   },
   blockExplorers: {
     default: {
       name: "Explorer",
-      url: "https://polychain-monsters-explorer.alt.technology",
+      url: "https://explorer.pmon.xyz",
     },
   },
   contracts: {},

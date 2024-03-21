@@ -37,7 +37,10 @@ describe("OCB", function () {
     const monsterApiV1 = await MonsterApiV1.deploy();
 
     const EventLoggerV1 = await ethers.getContractFactory("EventLoggerV1");
-    const eventLogger = await EventLoggerV1.deploy(await owner.getAddress());
+    const eventLogger = await EventLoggerV1.deploy(
+      await owner.getAddress(),
+      true,
+    );
 
     const MatchMakerV3 = await ethers.getContractFactory("MatchMakerV3");
     const matchMakerV3 = await upgrades.deployProxy(MatchMakerV3 as any, [
@@ -192,6 +195,8 @@ describe("OCB", function () {
 
       await createMockMonsters(monsterApiV1);
     });
+
+    it("should not crash with three defensive auras", async function () {});
 
     it("should should decrease the strength of defense auras", async function () {
       const {

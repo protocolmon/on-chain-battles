@@ -140,7 +140,7 @@ describe("OCB confidential", function () {
     });
     */
 
-    it.only("should allow confidential gameplay", async function () {
+    it("should allow confidential gameplay", async function () {
       const chainId = `${network.config.chainId}`;
 
       if (chainId !== "23294" && chainId !== "23295") {
