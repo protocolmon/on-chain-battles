@@ -38,7 +38,10 @@ async function run() {
     args: [],
   })) as bigint;
 
-  if (revealTimestamp < currentBlock.timestamp) {
+  if (
+    revealTimestamp !== BigInt(0) &&
+    revealTimestamp < currentBlock.timestamp
+  ) {
     const baseParamsBoosterPacks = {
       account: botAccount,
       address: BOOSTER_PACKS_ADDRESS,
