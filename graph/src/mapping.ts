@@ -26,6 +26,7 @@ const zeroAddress = "0x0000000000000000000000000000000000000000";
 
 export function handleBattleEvent(event: LogEvent): void {
   let battleEvent = new BattleEvent(event.params.id.toHexString());
+  battleEvent.matchId = event.params.matchId;
   battleEvent.action = event.params.action;
   battleEvent.data = event.params.data;
   battleEvent.timestamp = event.params.timestamp;

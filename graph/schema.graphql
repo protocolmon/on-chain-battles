@@ -1,5 +1,6 @@
 type BattleEvent @entity {
   id: ID!
+  matchId: BigInt!
   action: BigInt!
   data: Bytes!
   timestamp: BigInt!
