@@ -8,7 +8,9 @@ import {
   Purchase as PurchaseEvent,
   Sale as SaleEvent,
 } from "../generated/BondingCurveMons/ERC721";
+import { LogEvent } from "../generated/EventLoggerV1/EventLoggerV1";
 import {
+  BattleEvent,
   Token,
   Wallet,
   Contract,
@@ -21,6 +23,19 @@ import {
 } from "../generated/schema";
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
+
+export function handleBattleEvent(event: LogEvent): void {
+  let battleEvent = new BattleEvent(event.params.id.toHexString());
+  battleEvent.action = event.params.action;
+  battleEvent.data = event.params.data;
+  battleEvent.timestamp = event.params.timestamp;
+  battleEvent.player = event.params.player;
+  battleEvent.opponent = event.params.opponent;
+  battleEvent.monster = event.params.monster;
+  battleEvent.opponentMonster = event.params.opponentMonster;
+  battleEvent.round = event.params.round;
+  battleEvent.save();
+}
 
 export function handleTransfer(event: TransferEvent): void {
   log.debug("Transfer detected. From: {} | To: {} | TokenID: {}", [

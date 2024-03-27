@@ -1,3 +1,15 @@
+type BattleEvent @entity {
+  id: ID!
+  action: BigInt!
+  data: Bytes!
+  timestamp: BigInt!
+  player: Bytes!
+  opponent: Bytes!
+  monster: BigInt!
+  opponentMonster: BigInt!
+  round: BigInt!
+}
+
 type Token @entity {
   id: ID!
   owner: Wallet
