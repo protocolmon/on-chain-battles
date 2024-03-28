@@ -8,7 +8,7 @@ dataSources:
     name: EventLoggerV1
     network: pmon
     source:
-      address: "0xB3044485C73C9279C1377698F2C9bCD4E52d2b93"
+      address: "0xeFb274142EE00d298961DAa631F2d85b4ae98369"
       abi: EventLoggerV1
       startBlock: 1
     mapping:

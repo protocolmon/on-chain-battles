@@ -474,11 +474,19 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
                     if (
                         monsters[_match.challengerTeam.secondMonsterId].hp == 0
                     ) {
-                        leaderboard.addWin(_match.opponentTeam.owner);
-                        leaderboard.addLoss(_match.challengerTeam.owner);
+                        try
+                            leaderboard.addWin(_match.opponentTeam.owner)
+                        {} catch {}
+                        try
+                            leaderboard.addLoss(_match.challengerTeam.owner)
+                        {} catch {}
                     } else {
-                        leaderboard.addWin(_match.challengerTeam.owner);
-                        leaderboard.addLoss(_match.opponentTeam.owner);
+                        try
+                            leaderboard.addWin(_match.challengerTeam.owner)
+                        {} catch {}
+                        try
+                            leaderboard.addLoss(_match.opponentTeam.owner)
+                        {} catch {}
                     }
                 }
             } else {
