@@ -40,7 +40,7 @@ async function main() {
   output.contracts.MoveExecutorV1 = moveExecutorV1Address;
 
   const { address: eventLoggerV1Address, instance: eventLoggerV1 } =
-    await deployContract("EventLoggerV1", [await deployer.getAddress()]);
+    await deployContract("EventLoggerV1", [await deployer.getAddress(), false]);
 
   output.contracts.EventLoggerV1 = eventLoggerV1Address;
 
