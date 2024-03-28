@@ -156,9 +156,12 @@ contract EventLoggerV1 is Ownable, IEventLoggerV1 {
      *************************************************************************/
 
     function _storeLog(uint256 action, bytes memory data) internal {
+        /// @dev We start at 1
+        uint256 id = ++count;
+
         if (isStorageEnabled) {
             Log memory newLog = Log({
-                id: count++,
+                id: id,
                 action: action,
                 data: data,
                 timestamp: block.timestamp,
@@ -173,7 +176,7 @@ contract EventLoggerV1 is Ownable, IEventLoggerV1 {
         }
 
         emit LogEvent(
-            count,
+            id,
             currentMatchId,
             action,
             block.timestamp,

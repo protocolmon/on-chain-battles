@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -194,7 +194,11 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         if (matches[matchId].escaped == address(0)) {
             matches[matchId].escaped = msg.sender;
             if (address(leaderboard) != address(0)) {
-                leaderboard.addEscape(msg.sender);
+                try leaderboard.addEscape(msg.sender) {
+                    // ignore
+                } catch {
+                    // ignore
+                }
             }
         }
         accountToMatch[msg.sender] = 0;
