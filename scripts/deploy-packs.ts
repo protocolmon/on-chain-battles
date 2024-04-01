@@ -1,24 +1,7 @@
-import { ethers, network } from "hardhat";
-import { formatEther, parseEther, zeroAddress } from "viem";
+import { ethers } from "hardhat";
+import { formatEther } from "viem";
 import prompts from "prompts";
 import { deployProxy } from "./utils";
-
-const MAX_TOTAL_SUPPLY = 100_000;
-
-const FACTOR_IN_SATS = parseEther("100") / BigInt(MAX_TOTAL_SUPPLY);
-const FACTOR_IN_SATS_SCALED = FACTOR_IN_SATS * BigInt(10 ** 18);
-
-const config = {
-  bondingCurveParams: {
-    // price increases by 100 pmon / 100_000 supply
-    factor: FACTOR_IN_SATS_SCALED,
-    // linear curve
-    exponent: 1n,
-    // start price = 0.1 PMON
-    c: parseEther("5") * BigInt(10 ** 18),
-    maxSupply: BigInt(MAX_TOTAL_SUPPLY),
-  },
-};
 
 async function main() {
   const [owner] = await ethers.getSigners();

@@ -56,6 +56,9 @@ contract BoosterPacks is
     function initialize(
         string memory args_name,
         string memory args_symbol,
+        uint256 args_price,
+        uint256 args_fee,
+        uint256 args_maxSupply,
         address payable args_feeReceiver,
         IElementalEchoesTokenUriProvider args_tokenUriProvider
     ) public initializerERC721A initializer {
@@ -67,9 +70,9 @@ contract BoosterPacks is
         feeReceiver = args_feeReceiver;
         tokenUriProvider = args_tokenUriProvider;
 
-        PRICE = 5 ether; // aka 5 PMON
-        FEE = 0.05 ether; // aka 0.05 PMON
-        MAX_SUPPLY = 10_000;
+        PRICE = args_price;
+        FEE = args_fee;
+        MAX_SUPPLY = args_maxSupply;
     }
 
     /** buying */

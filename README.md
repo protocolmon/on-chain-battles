@@ -6,6 +6,10 @@
 
 This is a first approach for building fun on-chain monster battles on EVM compatible chains. This repo is work in progress and there might be lots of bugs and improvement potential. Feel free to contribute! Will will not spend too much time writing a proper documentation until the game sees some traction.
 
+## Deploy
+
+Set a PK (private key) env variable. E.g. run `export PK=<your-pk>`. Then run `npx hardhat run scripts/deploy.ts --network pmon`. This will deploy the contracts to the PMON L3 chain. You can also deploy to other networks by changing the network in the command. All deployed contract addresses will be written to `tmp/contracts.generated.<network>.json`.
+
 ## Fully On-Chain Battles
 
 In our on-chain game, every battle move, including attacks, defenses, and other actions, is recorded on the blockchain. This setup means that when one player submits a move on-chain, their opponent (who could be a bot) can simply monitor all on-chain activities and choose a move that will counter the action of their adversary. To prevent this, we are implementing a commit-and-reveal scheme. Both players first commit their moves, and then, once both moves are committed, they reveal them. This approach ensures that no player can track the other's moves beforehand. The logic for this is implemented in the MatchMakerV3 contract, specifically within the commit and reveal functions.

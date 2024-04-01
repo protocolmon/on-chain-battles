@@ -6,6 +6,7 @@ import {
   LeaderboardManagerV1,
   MatchMakerV3,
 } from "../typechain-types";
+import { parseEther } from "viem";
 
 async function main() {
   const output: any = {
@@ -216,7 +217,7 @@ async function main() {
 
   await (matchMakerV3 as unknown as MatchMakerV3).setMode(
     "1",
-    "47",
+    process.env.TIMEOUT || "47",
     timeoutMoveAddress,
   );
 
@@ -299,6 +300,37 @@ async function main() {
     console.log(`Setting executor for ${key}...`);
     await effectContract.addExecutor(moveExecutorV1Address);
   }
+
+  // deploy packs
+  const { address: elementalEchoesTokenUriAddress } = await deployContract(
+    "ElementalEchoesTokenUriProvider",
+    [
+      "https://drive.polychainmonsters.com/ipfs/QmUMZiwsJyNDkK67WjXi7zKixxUjFLXezq11mSK7e5wDPT/",
+      "https://drive.polychainmonsters.com/ipfs/QmYqnHSys9m8dPDWpjPWqnP95FBZCxdpxii3VvzaLqCpss",
+    ],
+  );
+
+  output.contracts.ElementalEchoesTokenUriProvider =
+    elementalEchoesTokenUriAddress;
+
+  const { address: boosterPacksAddress } = await deployProxy("BoosterPacks", [
+    "BoosterPacks",
+    "PACK",
+    parseEther("0.001"), // pack price
+    parseEther("0.00001"), // fee
+    10_000, // max supply
+    "0x275C1D7a6AD547209f5E29B8f89D370A9E8079eC", // fee receiver
+    elementalEchoesTokenUriAddress,
+  ]);
+
+  output.contracts.BoosterPacks = boosterPacksAddress;
+
+  const { address: appVersionsAddress } = await deployContract(
+    "AppVersionsV1",
+    [await deployer.getAddress()],
+  );
+
+  output.contracts.AppVersionsV1 = appVersionsAddress;
 
   // Writing to a JSON file
   fs.writeFileSync(
