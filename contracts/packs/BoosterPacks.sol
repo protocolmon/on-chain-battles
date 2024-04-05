@@ -53,6 +53,10 @@ contract BoosterPacks is
     uint256 public FEE;
     uint256 public MAX_SUPPLY;
 
+    uint256 public NEW_PRICE = 1 ether;
+    uint256 public NEW_PRICE_START_TOKEN_ID = 387;
+    uint256 public NEW_MAX_SUPPLY = 100_000;
+
     function initialize(
         string memory args_name,
         string memory args_symbol,
@@ -86,10 +90,13 @@ contract BoosterPacks is
         nonReentrant // since we send eth we go safe and use nonReentrant. @todo: check the extra gas
     {
         require(quantity > 0, "Quantity must be > 0");
-        require(totalSupply() + quantity <= MAX_SUPPLY, "Max supply reached");
+        require(
+            totalSupply() + quantity <= NEW_MAX_SUPPLY,
+            "Max supply reached"
+        );
 
         // get the price & check if enough value
-        uint256 price = PRICE * quantity;
+        uint256 price = NEW_PRICE * quantity;
         require(msg.value >= price, "Value too low");
 
         // mint
@@ -113,7 +120,10 @@ contract BoosterPacks is
         require(tokenIds.length < 256, "Too many tokenIds");
 
         // get the price and fees
-        uint256 price = tokenIds.length * PRICE;
+        uint256 price = 0;
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            price += tokenId >= NEW_PRICE_START_TOKEN_ID ? NEW_PRICE : PRICE;
+        }
         uint256 protocolFee = (price * FEE) / (1 ether);
 
         // burn the NFTs from the minter
@@ -136,10 +146,12 @@ contract BoosterPacks is
 
         _burn(tokenId, true);
         Address.sendValue(feeReceiver, FEE);
-        emit Sale(msg.sender, receiver, 1, PRICE, FEE);
+
+        uint256 price = tokenId >= NEW_PRICE_START_TOKEN_ID ? NEW_PRICE : PRICE;
+        emit Sale(msg.sender, receiver, 1, price, FEE);
 
         _mint(receiver, 1);
-        emit Purchase(msg.sender, receiver, 1, PRICE, 0);
+        emit Purchase(msg.sender, receiver, 1, price, 0);
     }
 
     function _burnMultiple(uint256[] memory ids) internal {
@@ -154,13 +166,13 @@ contract BoosterPacks is
         uint256 args_amount
     ) public view returns (uint256 price) {
         // no fee for buying
-        price = PRICE * args_amount;
+        price = NEW_PRICE * args_amount;
     }
 
     function getSellPriceInclFees(
         uint256 args_amount
     ) public view returns (uint256) {
-        uint256 sellPrice = PRICE * args_amount;
+        uint256 sellPrice = NEW_PRICE * args_amount;
         return sellPrice - (sellPrice * FEE) / (1 ether);
     }
 
