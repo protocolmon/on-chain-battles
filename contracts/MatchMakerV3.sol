@@ -191,7 +191,10 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     }
 
     function withdrawFromMatch(uint256 matchId) public isInMatch(matchId) {
-        if (matches[matchId].escaped == address(0)) {
+        if (
+            matches[matchId].escaped == address(0) &&
+            matches[matchId].phase < Phase.GameOver
+        ) {
             matches[matchId].escaped = msg.sender;
             if (address(leaderboard) != address(0)) {
                 try leaderboard.addEscape(msg.sender) {
