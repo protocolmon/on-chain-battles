@@ -53,9 +53,9 @@ contract BoosterPacks is
     uint256 public FEE;
     uint256 public MAX_SUPPLY;
 
-    uint256 public NEW_PRICE = 1 ether;
-    uint256 public NEW_PRICE_START_TOKEN_ID = 387;
-    uint256 public NEW_MAX_SUPPLY = 100_000;
+    uint256 public constant NEW_PRICE = 1 ether;
+    uint256 public constant NEW_PRICE_START_TOKEN_ID = 387;
+    uint256 public constant NEW_MAX_SUPPLY = 100_000;
 
     function initialize(
         string memory args_name,
@@ -122,7 +122,9 @@ contract BoosterPacks is
         // get the price and fees
         uint256 price = 0;
         for (uint256 i = 0; i < tokenIds.length; i++) {
-            price += tokenId >= NEW_PRICE_START_TOKEN_ID ? NEW_PRICE : PRICE;
+            price += (
+                tokenIds[i] >= NEW_PRICE_START_TOKEN_ID ? NEW_PRICE : PRICE
+            );
         }
         uint256 protocolFee = (price * FEE) / (1 ether);
 
@@ -147,10 +149,15 @@ contract BoosterPacks is
         _burn(tokenId, true);
         Address.sendValue(feeReceiver, FEE);
 
-        uint256 price = tokenId >= NEW_PRICE_START_TOKEN_ID ? NEW_PRICE : PRICE;
+        uint256 price = (
+            tokenId >= NEW_PRICE_START_TOKEN_ID ? NEW_PRICE : PRICE
+        );
         emit Sale(msg.sender, receiver, 1, price, FEE);
 
         _mint(receiver, 1);
+        if (price > NEW_PRICE) {
+            Address.sendValue(payable(msg.sender), price - NEW_PRICE);
+        }
         emit Purchase(msg.sender, receiver, 1, price, 0);
     }
 
