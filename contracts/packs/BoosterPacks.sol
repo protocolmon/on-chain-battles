@@ -55,6 +55,8 @@ contract BoosterPacks is
 
     uint256 public constant NEW_PRICE = 1 ether;
     uint256 public constant NEW_PRICE_START_TOKEN_ID = 387;
+
+    /// @dev Actually unused decided to keep at 10k (lol)
     uint256 public constant NEW_MAX_SUPPLY = 100_000;
 
     function initialize(
@@ -90,10 +92,7 @@ contract BoosterPacks is
         nonReentrant // since we send eth we go safe and use nonReentrant. @todo: check the extra gas
     {
         require(quantity > 0, "Quantity must be > 0");
-        require(
-            totalSupply() + quantity <= NEW_MAX_SUPPLY,
-            "Max supply reached"
-        );
+        require(totalSupply() + quantity <= MAX_SUPPLY, "Max supply reached");
 
         // get the price & check if enough value
         uint256 price = NEW_PRICE * quantity;
