@@ -53,3 +53,30 @@ export const polychainMonstersTestnet = {
     },
   },
 } as const satisfies Chain;
+
+export const sapphire = {
+  id: 23294,
+  name: "Oasis Sapphire",
+  network: "sapphire",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Rose",
+    symbol: "ROSE",
+  },
+  rpcUrls: {
+    public: {
+      http: ["https://sapphire.oasis.io"],
+      webSocket: ["wss://sapphire.oasis.io/ws"],
+    },
+    default: {
+      http: ["https://sapphire.oasis.io"],
+      webSocket: ["wss://sapphire.oasis.io/ws"],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "Oasis Foundation",
+      url: "https://explorer.sapphire.oasis.io/",
+    },
+  },
+} as const satisfies Chain;

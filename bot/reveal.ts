@@ -1,6 +1,6 @@
 import { privateKeyToAccount } from "viem/accounts";
-import { Address, createWalletClient, http, publicActions } from "viem";
-import { pmon } from "./chain";
+import { Address, Chain, createWalletClient, http, publicActions } from "viem";
+import { pmon, sapphire } from "./chain";
 import boosterPacksAbi from "../artifacts/contracts/packs/BoosterPacks.sol/BoosterPacks.json";
 
 const GAS_LIMIT = BigInt(5_000_000);
@@ -17,9 +17,19 @@ if (!REVEAL_PRIVATE_KEY) {
 
 const botAccount = privateKeyToAccount(REVEAL_PRIVATE_KEY);
 
+const getChain = (): Chain => {
+  if (process.env.CHAIN_ID === "23294") {
+    return sapphire;
+  } else {
+    return pmon;
+  }
+};
+
+const chain = getChain();
+
 const botClient = createWalletClient({
   account: botAccount,
-  chain: pmon,
+  chain,
   transport: http(),
 }).extend(publicActions);
 
