@@ -80,3 +80,11 @@ export const sapphire = {
     },
   },
 } as const satisfies Chain;
+
+export const getChain = (): Chain => {
+  if (process.env.CHAIN_ID === "23294") {
+    return sapphire;
+  } else {
+    return pmon;
+  }
+};
