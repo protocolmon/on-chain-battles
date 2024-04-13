@@ -34,7 +34,7 @@ async function main() {
     await tokenUriProvider.getAddress(),
   );
 
-  await deployProxy("BoosterPacks", [
+  await deployProxy("BoosterPacksV2", [
     "BoosterPacks",
     "PACK",
     parseEther("5"), // 5 ROSE

@@ -128,6 +128,8 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         uint8 remainingTurns
     );
 
+    event Escaped(address indexed player, uint256 indexed matchId);
+
     /****************************
      * MODS *
      ***************************/
@@ -196,6 +198,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             matches[matchId].phase < Phase.GameOver
         ) {
             matches[matchId].escaped = msg.sender;
+            emit Escaped(msg.sender, matchId);
             if (address(leaderboard) != address(0)) {
                 try leaderboard.addEscape(msg.sender) {
                     // ignore
