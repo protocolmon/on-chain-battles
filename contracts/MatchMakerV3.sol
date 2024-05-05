@@ -38,9 +38,9 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     }
 
     enum ChallengeMode {
-        Queue, // You open a match and any user can join it
-        OnlyChallenge, // When a user creates a game he must select an opponent and only this opponent can join
-        QueueAndChallenge // When a user creates a game he can choose if its open or if he challanges an opponent
+        Queue, /// @dev You open a match and any user can join it
+        OnlyChallenge, /// @dev When a user creates a game he must select an opponent and only this opponent can join
+        QueueAndChallenge /// @dev When a user creates a game he can choose if its open or if he challanges an opponent
     }
 
     enum ChallengePhase {
@@ -66,6 +66,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         Team opponentTeam;
         ChallengePhase phase;
         uint256 mode;
+        uint256 id;
         uint256 matchId;
     }
 
@@ -104,6 +105,9 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         bool noLeaderboard;
         ILeaderboardV1 individualLeaderboard;
         ChallengeMode challengeMode;
+        uint256 joinFrom; /// @dev Optional timestamp from when games can be started
+        uint256 joinUntil; /// @dev Optional timestamp until when games can be started
+        uint256 commitUntil; /// @dev Optional timestamp until when games can be finished
     }
 
     struct StatusEffectWrapperView {
@@ -207,7 +211,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         require(
             matches[matchId].challengerTeam.owner == msg.sender ||
                 matches[matchId].opponentTeam.owner == msg.sender,
-            "MatchMakerV3: not your match"
+            "MMV3: not your match"
         );
         _;
     }
@@ -241,8 +245,9 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         AdvancedMode storage advanced = advancedMode[mode];
         require(
             advanced.challengeMode != ChallengeMode.OnlyChallenge,
-            "MatchMakerV3: This mode supports challenge only"
+            "MMV3: This mode supports challenge only"
         );
+        canStartGame(mode);
         uint256 firstMonsterTokenId = monsterApi.createMonsterByName(
             firstMonster
         );
@@ -271,20 +276,15 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         AdvancedMode storage advanced = advancedMode[mode];
         require(
             advanced.challengeMode > ChallengeMode.Queue,
-            "MatchMakerV3: Cannot challenge in queue mode"
+            "MMV3: Cannot challenge in queue mode"
         );
-        require(
-            oponent != address(0),
-            "MatchMakerV3: Require oponent to challenge"
-        );
-        require(
-            oponent != msg.sender,
-            "MatchMakerV3: cannot play against yourself"
-        );
+        require(oponent != address(0), "MMV3: Require oponent to challenge");
+        require(oponent != msg.sender, "MMV3: cannot play against yourself");
         require(
             playerChallenges[mode][msg.sender][oponent] == 0,
-            "MatchMakerV3: there is already an open challenge against this player"
+            "MMV3: you already challenged this player"
         );
+        canStartGame(mode);
 
         uint256 firstMonsterTokenId = monsterApi.createMonsterByName(
             firstMonster
@@ -292,12 +292,13 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         uint256 secondMonsterTokenId = monsterApi.createMonsterByName(
             secondMonster
         );
-
-        challenges[++challengeCount] = Challenge(
+        challengeCount++;
+        challenges[challengeCount] = Challenge(
             Team(msg.sender, firstMonsterTokenId, secondMonsterTokenId),
             Team(oponent, 0, 0),
             ChallengePhase.Challenge,
             mode,
+            challengeCount,
             0
         );
         playerChallengeHistory[mode][msg.sender].toMatch[
@@ -320,7 +321,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         );
         require(
             challenge.phase == ChallengePhase.Challenge,
-            "MatchMakerV3: Challenge already resolved"
+            "MMV3: Challenge already resolved"
         );
         challenge.phase = ChallengePhase.Reject;
         playerChallenges[challenge.mode][challenge.challengerTeam.owner][
@@ -343,12 +344,13 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         Challenge storage challenge = challenges[challengeId];
         require(
             challenge.opponentTeam.owner == msg.sender,
-            "MatchMakerV3: Not the opponent of this challenge"
+            "MMV3: Not challenged"
         );
         require(
             challenge.phase == ChallengePhase.Challenge,
-            "MatchMakerV3: Challenge already resolved"
+            "MMV3: Challenge already resolved"
         );
+        canStartGame(challenge.mode);
 
         challenge.opponentTeam.firstMonsterId = firstMonsterTokenId;
         challenge.opponentTeam.secondMonsterId = secondMonsterTokenId;
@@ -357,7 +359,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             challenge.opponentTeam.owner
         ] = 0;
 
-        // add match
+        /// @dev add match
         matches[++matchCount] = Match(
             challenge.challengerTeam,
             challenge.opponentTeam,
@@ -369,7 +371,8 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             address(0),
             challenge.mode
         );
-        // add match to player history
+        challenge.matchId = matchCount;
+        /// @dev add match to player history
         playerMatchHistory[challenge.mode][msg.sender].toMatch[
             ++playerMatchHistory[challenge.mode][msg.sender].count
         ] = matchCount;
@@ -401,9 +404,9 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
 
             if (address(lb) != address(0)) {
                 try lb.addEscape(msg.sender) {
-                    // ignore
+                    /// @dev ignore
                 } catch {
-                    // ignore
+                    /// @dev ignore
                 }
             }
         }
@@ -421,8 +424,13 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         require(
             _match.phase == Phase.Commit,
             _match.phase == Phase.GameOver
-                ? "MatchMakerV3: game over"
-                : "MatchMakerV3: not in commit phase"
+                ? "MMV3: game over"
+                : "MMV3: not in commit phase"
+        );
+        AdvancedMode storage advanced = advancedMode[_match.mode];
+        require(
+            advanced.commitUntil == 0 || advanced.commitUntil > block.timestamp,
+            "MMV3: can no longer commit to match"
         );
 
         logger.setMatchId(matchId);
@@ -433,12 +441,12 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             ? _match.currentChallengerMove
             : _match.currentOpponentMove;
 
-        require(relevantMove.commit == 0, "MatchMakerV3: already committed");
+        require(relevantMove.commit == 0, "MMV3: already committed");
         relevantMove.commit = _commit;
 
         assignMonstersToMove(_match, relevantMove, isChallenger);
 
-        // if both players have committed, move to reveal phase
+        /// @dev if both players have committed, move to reveal phase
         if (
             _match.currentChallengerMove.commit != 0 &&
             _match.currentOpponentMove.commit != 0
@@ -459,10 +467,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         bytes32 secret
     ) public isInMatch(matchId) {
         Match storage _match = matches[matchId];
-        require(
-            _match.phase == Phase.Reveal,
-            "MatchMakerV3: not in reveal phase"
-        );
+        require(_match.phase == Phase.Reveal, "MMV3: not in reveal phase");
 
         /// @dev Write temp state to the logger
         logger.setMatchId(matchId);
@@ -476,21 +481,15 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     }
 
     function goToRevealPhase(uint256 matchId) external {
-        // Permit moving to reveal phase if the match timeout has expired
+        /// @dev Permit moving to reveal phase if the match timeout has expired
         Match storage _match = matches[matchId];
-        require(
-            _match.phase == Phase.Commit,
-            "MatchMakerV3: not in commit phase"
-        );
-        require(
-            block.timestamp > _match.timeout,
-            "MatchMakerV3: timeout not expired"
-        );
+        require(_match.phase == Phase.Commit, "MMV3: not in commit phase");
+        require(block.timestamp > _match.timeout, "MMV3: timeout not expired");
         _match.phase = Phase.Reveal;
     }
 
     function updateBlockTimestamp() external {
-        // This function is only used for mining a block (which will gen a new timestamp)
+        /// @dev This function is only used for mining a block (which will gen a new timestamp)
     }
 
     /**************************************************************************
@@ -517,6 +516,12 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             );
     }
 
+    function getChallengeById(
+        uint256 id
+    ) public view returns (Challenge memory) {
+        return challenges[id];
+    }
+
     function getMatchByUser(
         address user
     ) external view returns (MatchView memory) {
@@ -532,10 +537,24 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         MatchView[] memory matchlist = new MatchView[](count);
         for (uint256 i = 0; i < count; i++) {
             matchlist[i] = getMatchById(
-                playerMatchHistory[mode][user].toMatch[count]
+                playerMatchHistory[mode][user].toMatch[i + 1]
             );
         }
         return matchlist;
+    }
+
+    function getChallengeListByUser(
+        address user,
+        uint256 mode
+    ) external view returns (Challenge[] memory) {
+        uint256 count = playerChallengeHistory[mode][user].count;
+        Challenge[] memory challengelist = new Challenge[](count);
+        for (uint256 i = 0; i < count; i++) {
+            challengelist[i] = getChallengeById(
+                playerChallengeHistory[mode][user].toMatch[i + 1]
+            );
+        }
+        return challengelist;
     }
 
     function getStatusEffectsArray(
@@ -572,6 +591,18 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         }
     }
 
+    function canStartGame(uint256 mode) public view {
+        AdvancedMode storage advanced = advancedMode[mode];
+        require(
+            advanced.joinFrom == 0 || advanced.joinFrom < block.timestamp,
+            "MMV3: game mode has not jet started"
+        );
+        require(
+            advanced.joinUntil == 0 || advanced.joinUntil > block.timestamp,
+            "MMV3: game mode can no longer be played"
+        );
+    }
+
     /**************************************************************************
      * OWNER FUNCTIONS
      *************************************************************************/
@@ -592,11 +623,30 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         uint256 mode,
         bool noLeaderboard,
         ILeaderboardV1 individualLeaderboard,
-        ChallengeMode challengeMode
+        ChallengeMode challengeMode,
+        uint256 joinFrom,
+        uint256 joinUntil,
+        uint256 commitUntil
     ) external onlyOwner {
+        /// @dev check if advanced timestamps are valid - if set
+        require(
+            joinFrom == 0 || joinUntil == 0 || joinFrom < joinUntil,
+            "MMV3: join until should be after join from"
+        );
+        require(
+            joinFrom == 0 || commitUntil == 0 || joinFrom < commitUntil,
+            "MMV3: commit until should be after join from"
+        );
+        require(
+            commitUntil == 0 || joinUntil == 0 || joinUntil <= commitUntil,
+            "MMV3: commit until should be after or equal join until"
+        );
         advancedMode[mode].noLeaderboard = noLeaderboard;
         advancedMode[mode].individualLeaderboard = individualLeaderboard;
         advancedMode[mode].challengeMode = challengeMode;
+        advancedMode[mode].joinFrom = joinFrom;
+        advancedMode[mode].joinUntil = joinUntil;
+        advancedMode[mode].commitUntil = commitUntil;
     }
 
     /**************************************************************************
@@ -654,7 +704,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
                 ),
                 challengerInputEffects,
                 opponentInputEffects,
-                uint256(blockhash(block.number - 1)), // using pseudo-randomness for first version here
+                uint256(blockhash(block.number - 1)), /// @dev using pseudo-randomness for first version here
                 logger
             );
             monsters[challengerMonster.tokenId] = challengerMonster;
@@ -691,7 +741,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
                 logger.log(LOG_MONSTER_DEFEATED, opponentMonster.tokenId);
             }
 
-            // reset moves
+            /// @dev reset moves
             _match.currentChallengerMove.commit = 0;
             _match.currentChallengerMove.move = IMoveV1(address(0));
             _match.currentChallengerMove.monsterId = 0;
@@ -699,7 +749,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             _match.currentOpponentMove.move = IMoveV1(address(0));
             _match.currentOpponentMove.monsterId = 0;
 
-            // set back to commit phase or if one player has no monster left, set to GameOver
+            /// @dev set back to commit phase or if one player has no monster left, set to GameOver
             if (
                 (monsters[_match.challengerTeam.firstMonsterId].hp == 0 &&
                     monsters[_match.challengerTeam.secondMonsterId].hp == 0) ||
@@ -757,7 +807,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         Team memory teamA,
         Team memory teamB
     ) internal pure returns (uint256) {
-        // search in both teams
+        /// @dev search in both teams
         if (monsterId == teamA.firstMonsterId) {
             return teamA.secondMonsterId;
         } else if (monsterId == teamA.secondMonsterId) {
@@ -780,7 +830,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         } else if (_match.opponentTeam.owner == player) {
             return _match.challengerTeam.owner;
         } else {
-            revert("MatchMakerV3: no other player in match");
+            revert("MMV3: no other player in match");
         }
     }
 
@@ -793,7 +843,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         } else if (_match.opponentTeam.owner == player) {
             return _match.currentChallengerMove.commit != 0;
         } else {
-            revert("MatchMakerV3: no other player in match");
+            revert("MMV3: no other player in match");
         }
     }
 
@@ -808,7 +858,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             advanced.challengeMode == ChallengeMode.QueueAndChallenge ||
                 accountToMatch[msg.sender] == 0 ||
                 matches[existingMatchId].escaped != address(0),
-            "MatchMakerV3: already in match"
+            "MMV3: already in match"
         );
 
         monsters[firstMonsterId] = monsterApi.getMonster(firstMonsterId);
@@ -825,7 +875,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
 
         require(
             queuedTeams[mode].owner != msg.sender,
-            "MatchMakerV3: cannot play against yourself"
+            "MMV3: cannot play against yourself"
         );
 
         matches[++matchCount] = Match(
@@ -841,7 +891,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         );
 
         if (advanced.challengeMode == ChallengeMode.QueueAndChallenge) {
-            // add match to player history
+            /// @dev add match to player history
             playerMatchHistory[mode][msg.sender].toMatch[
                 ++playerMatchHistory[mode][msg.sender].count
             ] = matchCount;
@@ -892,13 +942,13 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
 
         require(
             address(relevantMove.move) == address(0),
-            "MatchMakerV3: already revealed"
+            "MMV3: already revealed"
         );
 
-        // verify if the commit was made with the secret
+        /// @dev verify if the commit was made with the secret
         require(
             keccak256(abi.encodePacked(move, secret)) == relevantMove.commit,
-            "MatchMakerV3: invalid secret"
+            "MMV3: invalid secret"
         );
 
         relevantMove.move = IMoveV1(move);
@@ -914,7 +964,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
 
         require(
             address(relevantMove.move) == address(0),
-            "MatchMakerV3: already revealed"
+            "MMV3: already revealed"
         );
 
         relevantMove.move = IMoveV1(modes[_match.mode].timeoutMove);
@@ -935,7 +985,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         IBaseStatusEffectV1.StatusEffectWrapper[]
             memory fromEffects = getStatusEffectsArray(fromMonsterId);
 
-        // Create a dynamic array to store status effects that need to be transited.
+        /// @dev Create a dynamic array to store status effects that need to be transited.
         IBaseStatusEffectV1.StatusEffectWrapper[]
             memory transitingEffects = new IBaseStatusEffectV1.StatusEffectWrapper[](
                 fromEffects.length
@@ -956,7 +1006,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             }
         }
 
-        // Trim the array to fit the exact count of effects
+        /// @dev Trim the array to fit the exact count of effects
         IBaseStatusEffectV1.StatusEffectWrapper[]
             memory toEffects = new IBaseStatusEffectV1.StatusEffectWrapper[](
                 count

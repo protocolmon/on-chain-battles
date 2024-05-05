@@ -530,7 +530,7 @@ describe("OCB", function () {
             await damageOverTimeAttack.getAddress(),
           );
         } catch (e: any) {
-          if (e.message.includes("MatchMakerV3: game over")) {
+          if (e.message.includes("MMV3: game over")) {
             break;
           }
           throw e;
@@ -1177,7 +1177,7 @@ describe("OCB", function () {
           await damageOverTimeAttack.getAddress(),
         );
       } catch (err: any) {
-        if (err.message.includes("MatchMakerV3: game over")) {
+        if (err.message.includes("MMV3: game over")) {
           break;
         }
 
