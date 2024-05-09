@@ -598,7 +598,9 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             "MMV3: game mode has not jet started"
         );
         require(
-            advanced.joinUntil == 0 || advanced.joinUntil > block.timestamp,
+            (advanced.joinUntil == 0 || advanced.joinUntil > block.timestamp) &&
+                (advanced.commitUntil == 0 ||
+                    advanced.commitUntil > block.timestamp),
             "MMV3: game mode can no longer be played"
         );
     }

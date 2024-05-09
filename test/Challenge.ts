@@ -2,7 +2,6 @@ import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 import { EventLoggerV1, MatchMakerV3 } from "../typechain-types";
 import { Signer } from "ethers";
-import { decodeEvent } from "./events";
 import { createMockMonsters } from "./attacks/createMockMonsters";
 import { deployAttacks } from "./attacks/deployAttacks";
 import { zeroAddress } from "viem";
@@ -30,7 +29,6 @@ describe("Advanced Game Modes", function () {
     const moveExecutorV1 = await MoveExecutorV1.deploy(
       await owner.getAddress(),
     );
-
     const UsernamesV1 = await ethers.getContractFactory("UsernamesV1");
     const userNamesV1 = await UsernamesV1.deploy(await owner.getAddress());
 
@@ -145,22 +143,6 @@ describe("Advanced Game Modes", function () {
     return events;
   }
 
-  async function revealSingleAttack(
-    matchMaker: MatchMakerV3,
-    eventLogger: EventLoggerV1,
-    user: Signer,
-    matchId: number | bigint,
-    move: string,
-  ): Promise<any[]> {
-    const events = [];
-
-    events.push(
-      ...(await reveal(matchMaker, eventLogger, user, matchId, move)),
-    );
-
-    return events;
-  }
-
   async function runAttacks(
     matchMaker: MatchMakerV3,
     eventLogger: EventLoggerV1,
@@ -191,6 +173,19 @@ describe("Advanced Game Modes", function () {
     }
 
     return events;
+  }
+
+  const ONE_DAY = 24 * 60 * 60;
+
+  async function geTimestamp() {
+    const blockNumBefore = await ethers.provider.getBlockNumber();
+    const blockBefore = await ethers.provider.getBlock(blockNumBefore);
+    return blockBefore?.timestamp ?? -1;
+  }
+
+  async function increaseTime(time: number) {
+    await ethers.provider.send("evm_increaseTime", [time]);
+    await ethers.provider.send("evm_mine");
   }
 
   async function setAdvancedMode(
@@ -347,19 +342,9 @@ describe("Advanced Game Modes", function () {
     });
   });
 
-  describe.only("Challenge oponent", function () {
+  describe("Challenge oponent", function () {
     it("should not be able to join queue", async function () {
-      const {
-        owner,
-        account2,
-        account3,
-        monsterApiV1,
-        timeoutMove,
-        matchMaker,
-        eventLogger,
-        leaderboardV1,
-        moveExecutorV1,
-      } = await deploy();
+      const { account2, monsterApiV1, matchMaker } = await deploy();
 
       const gamaMode = 0;
 
@@ -376,23 +361,13 @@ describe("Advanced Game Modes", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      expect(
+      await expect(
         matchMaker.connect(account2).createAndJoin(gamaMode, "1", "3"),
       ).to.be.revertedWith("MMV3: This mode supports challenge only");
     });
 
     it("should not be able to join wrong challenge", async function () {
-      const {
-        owner,
-        account2,
-        account3,
-        monsterApiV1,
-        timeoutMove,
-        matchMaker,
-        eventLogger,
-        leaderboardV1,
-        moveExecutorV1,
-      } = await deploy();
+      const { account2, account3, monsterApiV1, matchMaker } = await deploy();
 
       const gamaMode = 0;
 
@@ -409,7 +384,7 @@ describe("Advanced Game Modes", function () {
 
       await createMockMonsters(monsterApiV1);
 
-      expect(
+      await expect(
         matchMaker.connect(account3).acceptChallenge(0, "4", "5"),
       ).to.be.revertedWith("MMV3: Not challenged");
       await matchMaker
@@ -420,25 +395,78 @@ describe("Advanced Game Modes", function () {
         .getChallengeListByUser(account3.address, gamaMode);
       expect(challenges.length).to.be.equal(1);
 
-      expect(
+      await expect(
         matchMaker
           .connect(account2)
           .acceptChallenge(challenges[0].id, "4", "5"),
       ).to.be.revertedWith("MMV3: Not challenged");
     });
 
-    it("should not be able challenge the same player twice", async function () {
-      const {
-        owner,
-        account2,
-        account3,
-        monsterApiV1,
-        timeoutMove,
+    it("should be able to reject challenge", async function () {
+      const { account2, account3, monsterApiV1, matchMaker } = await deploy();
+
+      const gamaMode = 0;
+
+      await setAdvancedMode(
         matchMaker,
-        eventLogger,
-        leaderboardV1,
-        moveExecutorV1,
-      } = await deploy();
+        gamaMode,
+        false,
+        zeroAddress,
+        ChallengeMode.OnlyChallenge,
+        0,
+        0,
+        0,
+      );
+
+      await createMockMonsters(monsterApiV1);
+
+      await matchMaker
+        .connect(account2)
+        .challengeOponent(gamaMode, "1", "3", account3.address);
+      let challenges = await matchMaker
+        .connect(account3)
+        .getChallengeListByUser(account3.address, gamaMode);
+      expect(challenges.length).to.be.equal(1);
+
+      // reject as challenger
+      await matchMaker.connect(account2).rejectChallenge(challenges[0].id);
+
+      await matchMaker
+        .connect(account2)
+        .challengeOponent(gamaMode, "1", "3", account3.address);
+      challenges = await matchMaker
+        .connect(account3)
+        .getChallengeListByUser(account3.address, gamaMode);
+      expect(challenges.length).to.be.equal(2);
+
+      // reject as challenged
+      await matchMaker.connect(account3).rejectChallenge(challenges[1].id);
+    });
+
+    it("should not be able to join queue in challenge only mode", async function () {
+      const { account3, monsterApiV1, matchMaker } = await deploy();
+
+      const gamaMode = 0;
+
+      await setAdvancedMode(
+        matchMaker,
+        gamaMode,
+        false,
+        zeroAddress,
+        ChallengeMode.OnlyChallenge,
+        0,
+        0,
+        0,
+      );
+
+      await createMockMonsters(monsterApiV1);
+      await expect(
+        matchMaker.connect(account3).createAndJoin(0, "4", "5"),
+      ).to.be.revertedWith("MMV3: This mode supports challenge only");
+    });
+
+    it("should not be able challenge the same player twice", async function () {
+      const { account2, account3, monsterApiV1, matchMaker } = await deploy();
 
       const gamaMode = 0;
 
@@ -459,7 +487,7 @@ describe("Advanced Game Modes", function () {
         .connect(account2)
         .challengeOponent(gamaMode, "1", "3", account3.address);
 
-      expect(
+      await expect(
         matchMaker
           .connect(account2)
           .challengeOponent(gamaMode, "1", "3", account3.address),
@@ -472,7 +500,6 @@ describe("Advanced Game Modes", function () {
         account2,
         account3,
         monsterApiV1,
-        timeoutMove,
         matchMaker,
         eventLogger,
         leaderboardV1,
@@ -550,7 +577,6 @@ describe("Advanced Game Modes", function () {
         account3,
         account4,
         monsterApiV1,
-        timeoutMove,
         matchMaker,
         eventLogger,
         leaderboardV1,
@@ -649,7 +675,104 @@ describe("Advanced Game Modes", function () {
     });
   });
 
-  describe.only("Advanced leaderboard", function () {
+  describe("Mixed mode", function () {
+    it("should be able to join queue and challenge", async function () {
+      const {
+        owner,
+        account2,
+        account3,
+        monsterApiV1,
+        timeoutMove,
+        matchMaker,
+        eventLogger,
+        leaderboardV1,
+        moveExecutorV1,
+      } = await deploy();
+
+      const gamaMode = 2;
+      await matchMaker.setMode(
+        gamaMode,
+        ONE_MINUTE,
+        await timeoutMove.getAddress(),
+      );
+
+      await setAdvancedMode(
+        matchMaker,
+        gamaMode,
+        false,
+        zeroAddress,
+        ChallengeMode.QueueAndChallenge,
+        0,
+        0,
+        0,
+      );
+
+      await createMockMonsters(monsterApiV1);
+
+      await matchMaker.connect(account2).createAndJoin(gamaMode, "1", "3"); // join with fire and water
+      await matchMaker.connect(account3).createAndJoin(gamaMode, "4", "5"); // join with water and nature
+
+      await matchMaker
+        .connect(account2)
+        .challengeOponent(gamaMode, "1", "3", account3.address);
+      const challenges = await matchMaker
+        .connect(account3)
+        .getChallengeListByUser(account3.address, gamaMode);
+      await matchMaker
+        .connect(account3)
+        .acceptChallenge(challenges[0].id, "4", "5");
+
+      expect(await matchMaker.matchCount()).to.equal(BigInt(2));
+
+      const { damageOverTimeAttack } = await deployAttacks(
+        owner,
+        eventLogger,
+        moveExecutorV1,
+      );
+
+      let gameOverCount = 0;
+
+      while (true) {
+        try {
+          await runAttacks(
+            matchMaker,
+            eventLogger,
+            account2,
+            account3,
+            1,
+            await damageOverTimeAttack.getAddress(),
+            await damageOverTimeAttack.getAddress(),
+          );
+          await runAttacks(
+            matchMaker,
+            eventLogger,
+            account2,
+            account3,
+            2,
+            await damageOverTimeAttack.getAddress(),
+            await damageOverTimeAttack.getAddress(),
+          );
+        } catch (e: any) {
+          if (e.message.includes("MMV3: game over")) {
+            gameOverCount++;
+            if (gameOverCount === 2) {
+              break;
+            }
+          } else {
+            throw e;
+          }
+        }
+      }
+      let match = await matchMaker.getMatchById(1);
+      expect(match._match.phase).to.equal(2);
+      match = await matchMaker.getMatchById(2);
+      expect(match._match.phase).to.equal(2);
+      const stats = await leaderboardV1.getAllStats(0);
+      expect(stats.length).to.equal(2);
+    });
+  });
+
+  describe("Advanced leaderboard", function () {
     it("should not track in leaderboard", async function () {
       const {
         owner,
@@ -791,6 +914,211 @@ describe("Advanced Game Modes", function () {
       expect(stats.length).to.equal(2);
       stats = await leaderboardV1.getAllStats(0);
       expect(stats.length).to.equal(0);
+    });
+  });
+
+  describe("Timed modes", function () {
+    it("should not be able to join future tournament", async function () {
+      const { account2, monsterApiV1, matchMaker } = await deploy();
+
+      const gamaMode = 0;
+
+      const ts = await geTimestamp();
+
+      await setAdvancedMode(
+        matchMaker,
+        gamaMode,
+        false,
+        zeroAddress,
+        ChallengeMode.QueueAndChallenge,
+        ts + ONE_DAY,
+        0,
+        0,
+      );
+
+      await createMockMonsters(monsterApiV1);
+
+      await expect(
+        matchMaker.connect(account2).createAndJoin(gamaMode, "1", "3"),
+      ).to.be.revertedWith("MMV3: game mode has not jet started");
+    });
+    it("should not be able to join past tournament", async function () {
+      const { account2, monsterApiV1, matchMaker } = await deploy();
+
+      const gamaMode = 0;
+
+      const ts = await geTimestamp();
+
+      await setAdvancedMode(
+        matchMaker,
+        gamaMode,
+        false,
+        zeroAddress,
+        ChallengeMode.QueueAndChallenge,
+        0,
+        ts,
+        0,
+      );
+      await increaseTime(ONE_DAY);
+
+      await createMockMonsters(monsterApiV1);
+
+      await expect(
+        matchMaker.connect(account2).createAndJoin(gamaMode, "1", "3"),
+      ).to.be.revertedWith("MMV3: game mode can no longer be played");
+    });
+
+    it("should not be able to join a game past commitUntil", async function () {
+      const { account2, monsterApiV1, matchMaker } = await deploy();
+
+      const gamaMode = 0;
+
+      const ts = await geTimestamp();
+
+      await setAdvancedMode(
+        matchMaker,
+        gamaMode,
+        false,
+        zeroAddress,
+        ChallengeMode.QueueAndChallenge,
+        0,
+        0,
+        ts,
+      );
+      await increaseTime(ONE_DAY);
+
+      await createMockMonsters(monsterApiV1);
+
+      await expect(
+        matchMaker.connect(account2).createAndJoin(gamaMode, "1", "3"),
+      ).to.be.revertedWith("MMV3: game mode can no longer be played");
+    });
+
+    it("should not be able to commit a move past commitUntil", async function () {
+      const {
+        owner,
+        account2,
+        account3,
+        monsterApiV1,
+        matchMaker,
+        eventLogger,
+        moveExecutorV1,
+      } = await deploy();
+
+      const { damageOverTimeAttack } = await deployAttacks(
+        owner,
+        eventLogger,
+        moveExecutorV1,
+      );
+
+      const gamaMode = 0;
+
+      const ts = await geTimestamp();
+
+      await setAdvancedMode(
+        matchMaker,
+        gamaMode,
+        false,
+        zeroAddress,
+        ChallengeMode.QueueAndChallenge,
+        0,
+        0,
+        ts + ONE_DAY,
+      );
+
+      await createMockMonsters(monsterApiV1);
+      await matchMaker.connect(account2).createAndJoin(gamaMode, "1", "3");
+      await matchMaker.connect(account3).createAndJoin(gamaMode, "2", "4");
+
+      await commitSingleAttack(
+        matchMaker,
+        eventLogger,
+        account2,
+        1,
+        await damageOverTimeAttack.getAddress(),
+      );
+
+      await increaseTime(ONE_DAY * 2);
+      await expect(
+        commitSingleAttack(
+          matchMaker,
+          eventLogger,
+          account3,
+          1,
+          await damageOverTimeAttack.getAddress(),
+        ),
+      ).to.be.revertedWith("MMV3: can no longer commit to match");
+    });
+
+    it("should be able to run game within time frame", async function () {
+      const {
+        owner,
+        account2,
+        account3,
+        monsterApiV1,
+        timeoutMove,
+        matchMaker,
+        eventLogger,
+        leaderboardV1,
+        moveExecutorV1,
+      } = await deploy();
+
+      const gamaMode = 2;
+      await matchMaker.setMode(
+        gamaMode,
+        ONE_MINUTE,
+        await timeoutMove.getAddress(),
+      );
+
+      const ts = await geTimestamp();
+
+      await setAdvancedMode(
+        matchMaker,
+        gamaMode,
+        false,
+        zeroAddress,
+        ChallengeMode.QueueAndChallenge,
+        ts,
+        ts * 2,
+        ts * 2,
+      );
+
+      await increaseTime(ONE_DAY);
+
+      await createMockMonsters(monsterApiV1);
+
+      await matchMaker.connect(account2).createAndJoin(gamaMode, "1", "3"); // join with fire and water
+      await matchMaker.connect(account3).createAndJoin(gamaMode, "4", "5"); // join with water and nature
+
+      const { damageOverTimeAttack } = await deployAttacks(
+        owner,
+        eventLogger,
+        moveExecutorV1,
+      );
+
+      const matchId = 1;
+
+      while (true) {
+        try {
+          await runAttacks(
+            matchMaker,
+            eventLogger,
+            account2,
+            account3,
+            matchId,
+            await damageOverTimeAttack.getAddress(),
+            await damageOverTimeAttack.getAddress(),
+          );
+        } catch (e: any) {
+          if (e.message.includes("MMV3: game over")) {
+            break;
+          }
+          throw e;
+        }
+      }
+
+      const stats = await leaderboardV1.getAllStats(0);
+      expect(stats.length).to.equal(2);
     });
   });
 });
