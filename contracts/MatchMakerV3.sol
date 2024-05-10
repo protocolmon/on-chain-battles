@@ -108,6 +108,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         uint256 joinFrom; /// @dev Optional timestamp from when games can be started
         uint256 joinUntil; /// @dev Optional timestamp until when games can be started
         uint256 commitUntil; /// @dev Optional timestamp until when games can be finished
+        bool openChallenges; /// @dev Allow open challenges
     }
 
     struct StatusEffectWrapperView {
@@ -245,7 +246,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         AdvancedMode storage advanced = advancedMode[mode];
         require(
             advanced.challengeMode != ChallengeMode.OnlyChallenge,
-            "MMV3: This mode supports challenge only"
+            "MMV3: Challenge only"
         );
         canStartGame(mode);
         uint256 firstMonsterTokenId = monsterApi.createMonsterByName(
@@ -275,14 +276,18 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
     ) external {
         AdvancedMode storage advanced = advancedMode[mode];
         require(
-            advanced.challengeMode > ChallengeMode.Queue,
+            advanced.challengeMode > ChallengeMode.Queue ||
+                advanced.openChallenges,
             "MMV3: Cannot challenge in queue mode"
         );
-        require(oponent != address(0), "MMV3: Require oponent to challenge");
+        require(
+            oponent != address(0) || advanced.openChallenges,
+            "MMV3: Require oponent"
+        );
         require(oponent != msg.sender, "MMV3: cannot play against yourself");
         require(
             playerChallenges[mode][msg.sender][oponent] == 0,
-            "MMV3: you already challenged this player"
+            "MMV3: have open challenge"
         );
         canStartGame(mode);
 
@@ -317,7 +322,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         require(
             challenge.challengerTeam.owner == msg.sender ||
                 challenge.opponentTeam.owner == msg.sender,
-            "Not part of this challenge"
+            "Not your challenge"
         );
         require(
             challenge.phase == ChallengePhase.Challenge,
@@ -342,18 +347,25 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
             secondMonster
         );
         Challenge storage challenge = challenges[challengeId];
-        require(
-            challenge.opponentTeam.owner == msg.sender,
-            "MMV3: Not challenged"
-        );
+
+        AdvancedMode storage advanced = advancedMode[challenge.mode];
         require(
             challenge.phase == ChallengePhase.Challenge,
             "MMV3: Challenge already resolved"
         );
         canStartGame(challenge.mode);
+        if (
+            challenge.opponentTeam.owner != address(0) ||
+            !advanced.openChallenges
+        ) {
+            require(
+                challenge.opponentTeam.owner == msg.sender,
+                "MMV3: Not challenged"
+            );
+            challenge.opponentTeam.firstMonsterId = firstMonsterTokenId;
+            challenge.opponentTeam.secondMonsterId = secondMonsterTokenId;
+        }
 
-        challenge.opponentTeam.firstMonsterId = firstMonsterTokenId;
-        challenge.opponentTeam.secondMonsterId = secondMonsterTokenId;
         challenge.phase = ChallengePhase.Accept;
         playerChallenges[challenge.mode][challenge.challengerTeam.owner][
             challenge.opponentTeam.owner
@@ -362,7 +374,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         /// @dev add match
         matches[++matchCount] = Match(
             challenge.challengerTeam,
-            challenge.opponentTeam,
+            Team(msg.sender, firstMonsterTokenId, secondMonsterTokenId),
             Move(0, IMoveV1(address(0)), 0),
             Move(0, IMoveV1(address(0)), 0),
             Phase.Commit,
@@ -628,20 +640,17 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         ChallengeMode challengeMode,
         uint256 joinFrom,
         uint256 joinUntil,
-        uint256 commitUntil
+        uint256 commitUntil,
+        bool openChallenges
     ) external onlyOwner {
         /// @dev check if advanced timestamps are valid - if set
         require(
-            joinFrom == 0 || joinUntil == 0 || joinFrom < joinUntil,
-            "MMV3: join until should be after join from"
-        );
-        require(
-            joinFrom == 0 || commitUntil == 0 || joinFrom < commitUntil,
-            "MMV3: commit until should be after join from"
-        );
-        require(
-            commitUntil == 0 || joinUntil == 0 || joinUntil <= commitUntil,
-            "MMV3: commit until should be after or equal join until"
+            (joinFrom == 0 || joinUntil == 0 || joinFrom < joinUntil) &&
+                (joinFrom == 0 || commitUntil == 0 || joinFrom < commitUntil) &&
+                (commitUntil == 0 ||
+                    joinUntil == 0 ||
+                    joinUntil <= commitUntil),
+            "MMV3: wrong timestamps"
         );
         advancedMode[mode].noLeaderboard = noLeaderboard;
         advancedMode[mode].individualLeaderboard = individualLeaderboard;
@@ -649,6 +658,7 @@ contract MatchMakerV3 is Initializable, OwnableUpgradeable {
         advancedMode[mode].joinFrom = joinFrom;
         advancedMode[mode].joinUntil = joinUntil;
         advancedMode[mode].commitUntil = commitUntil;
+        advancedMode[mode].openChallenges = openChallenges;
     }
 
     /**************************************************************************

@@ -197,6 +197,7 @@ describe("Advanced Game Modes", function () {
     joinFrom: number | bigint,
     joinUntil: number | bigint,
     commitUntil: number | bigint,
+    openChallenges: boolean = false,
   ): Promise<void> {
     await matchMaker.setAdvancedMode(
       mode,
@@ -206,6 +207,7 @@ describe("Advanced Game Modes", function () {
       joinFrom,
       joinUntil,
       commitUntil,
+      openChallenges,
     );
   }
 
@@ -363,7 +365,7 @@ describe("Advanced Game Modes", function () {
 
       await expect(
         matchMaker.connect(account2).createAndJoin(gamaMode, "1", "3"),
-      ).to.be.revertedWith("MMV3: This mode supports challenge only");
+      ).to.be.revertedWith("MMV3: Challenge only");
     });
 
     it("should not be able to join wrong challenge", async function () {
@@ -462,7 +464,7 @@ describe("Advanced Game Modes", function () {
       await createMockMonsters(monsterApiV1);
       await expect(
         matchMaker.connect(account3).createAndJoin(0, "4", "5"),
-      ).to.be.revertedWith("MMV3: This mode supports challenge only");
+      ).to.be.revertedWith("MMV3: Challenge only");
     });
 
     it("should not be able challenge the same player twice", async function () {
@@ -491,7 +493,32 @@ describe("Advanced Game Modes", function () {
         matchMaker
           .connect(account2)
           .challengeOponent(gamaMode, "1", "3", account3.address),
-      ).to.be.revertedWith("MMV3: you already challenged this player");
+      ).to.be.revertedWith("MMV3: have open challenge");
+    });
+
+    it("should not be able challenge 0 address", async function () {
+      const { account2, monsterApiV1, matchMaker } = await deploy();
+
+      const gamaMode = 0;
+
+      await setAdvancedMode(
+        matchMaker,
+        gamaMode,
+        false,
+        zeroAddress,
+        ChallengeMode.OnlyChallenge,
+        0,
+        0,
+        0,
+      );
+
+      await createMockMonsters(monsterApiV1);
+
+      await expect(
+        matchMaker
+          .connect(account2)
+          .challengeOponent(gamaMode, "1", "3", zeroAddress),
+      ).to.be.revertedWith("MMV3: Require oponent");
     });
 
     it("should play a challenge game", async function () {
@@ -672,6 +699,95 @@ describe("Advanced Game Modes", function () {
 
       const stats = await leaderboardV1.getAllStats(0);
       expect(stats.length).to.equal(3);
+    });
+  });
+
+  describe("Open challenge", function () {
+    it("should not be able to open two open challenges", async function () {
+      const { account2, monsterApiV1, matchMaker } = await deploy();
+
+      const gamaMode = 0;
+
+      await setAdvancedMode(
+        matchMaker,
+        gamaMode,
+        false,
+        zeroAddress,
+        ChallengeMode.OnlyChallenge,
+        0,
+        0,
+        0,
+        true,
+      );
+
+      await createMockMonsters(monsterApiV1);
+
+      await matchMaker
+        .connect(account2)
+        .challengeOponent(gamaMode, "1", "3", zeroAddress);
+
+      await expect(
+        matchMaker
+          .connect(account2)
+          .challengeOponent(gamaMode, "1", "3", zeroAddress),
+      ).to.be.revertedWith("MMV3: have open challenge");
+    });
+
+    it("should be able for two players to have one open challenges", async function () {
+      const { account2, account3, monsterApiV1, matchMaker } = await deploy();
+
+      const gamaMode = 0;
+
+      await setAdvancedMode(
+        matchMaker,
+        gamaMode,
+        false,
+        zeroAddress,
+        ChallengeMode.OnlyChallenge,
+        0,
+        0,
+        0,
+        true,
+      );
+
+      await createMockMonsters(monsterApiV1);
+
+      await matchMaker
+        .connect(account2)
+        .challengeOponent(gamaMode, "1", "3", zeroAddress);
+      await matchMaker
+        .connect(account3)
+        .challengeOponent(gamaMode, "1", "3", zeroAddress);
+
+      // get open challenges
+      let challenges = await matchMaker
+        .connect(account3)
+        .getChallengeListByUser(zeroAddress, gamaMode);
+
+      expect(challenges.length).to.be.equal(2);
+
+      await matchMaker
+        .connect(account3)
+        .acceptChallenge(challenges[1].id, "4", "5");
+
+      await matchMaker
+        .connect(account2)
+        .acceptChallenge(challenges[0].id, "4", "5");
+
+      challenges = await matchMaker
+        .connect(account2)
+        .getChallengeListByUser(zeroAddress, gamaMode);
+
+      expect(challenges.length).to.be.equal(2);
+      for (let i = 0; i < challenges.length; i++) {
+        expect(challenges[i].phase).to.be.equal(1);
+      }
+
+      const matches = await matchMaker
+        .connect(account2)
+        .getMatchListByUser(account2.address, gamaMode);
+      expect(matches.length).to.be.equal(2);
+      expect(await matchMaker.matchCount()).to.equal(BigInt(2));
     });
   });
 
